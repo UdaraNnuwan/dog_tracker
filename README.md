@@ -16,7 +16,7 @@ Architecture, rules and build phases are in [CLAUDE.md](CLAUDE.md); decisions ar
 
 ## Setup
 
-Requires Node 20+ and pnpm (`corepack enable` or `corepack install -g pnpm@10`).
+Requires Node 22+ (Wrangler 4 needs it) and pnpm (`corepack enable` or `corepack install -g pnpm@10`).
 
 ```sh
 pnpm i

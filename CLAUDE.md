@@ -6,7 +6,7 @@ topics and payloads is `docs/spec/Smart_Dog_Collar_MQTT_Interface_Specification_
 deliberate deviation in `docs/adr/`.
 
 ## Stack
-- TypeScript (strict) everywhere, pnpm workspaces, Node 20+.
+- TypeScript (strict) everywhere, pnpm workspaces, Node 22+ (`.nvmrc`; Wrangler 4 requires it).
 - `apps/web`: React + Vite, TanStack Router + TanStack Query, Tailwind + shadcn/ui,
   Leaflet (OSM raster tiles; no WebGL, ADR 0005), uPlot for time series.
 - `apps/worker`: one Cloudflare Worker serving the SPA (static assets) + Hono API under `/api/*`.
