@@ -12,6 +12,7 @@ runs inside the Workers runtime and the trade-offs that come with it.
 
 ## Decisions
 
+
 ### 1. Own minimal MQTT 3.1.1 codec instead of mqtt.js
 
 `apps/worker/src/mqtt/codec.ts` (pure encode/decode) and `session.ts` (one connection's state
