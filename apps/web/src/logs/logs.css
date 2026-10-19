@@ -1,0 +1,118 @@
+/* Processing log: live column and Logs tab (ADR 0008). */
+.log-panel {
+  position: sticky;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.log-panel .chips {
+  margin: 6px 0 8px;
+}
+.log-panel .log-scroll {
+  max-height: calc(100vh - 140px);
+}
+.logs-view .logs-scroll {
+  max-height: calc(100vh - 260px);
+}
+.tabs.mini button {
+  padding: 3px 10px;
+  font-size: 12.5px;
+}
+.toolbar.compact {
+  margin: 4px 8px;
+}
+button.more {
+  display: block;
+  margin: 8px auto;
+}
+
+table.logs-table td.msg {
+  white-space: normal;
+  word-break: break-word;
+  min-width: 160px;
+}
+table.logs-table tbody tr {
+  cursor: pointer;
+}
+table.logs-table td.json {
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+table.logs-table td.json code {
+  color: var(--muted);
+}
+table.logs-table .detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 4px 0 2px;
+}
+table.logs-table tr.lvl-debug td {
+  color: var(--muted);
+}
+table.logs-table tr.lvl-warn {
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+}
+table.logs-table tr.lvl-error {
+  background: color-mix(in srgb, var(--bad) 10%, transparent);
+}
+table.logs-table tr.detail-row,
+table.logs-table tr.detail-row:hover {
+  background: var(--bg);
+  cursor: default;
+}
+table.logs-table tr.detail-row pre {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.lvl {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.lvl-debug .lvl,
+.lvl.lvl-debug {
+  color: var(--muted);
+}
+.lvl.lvl-info {
+  color: var(--accent);
+}
+.lvl.lvl-warn {
+  color: var(--warn);
+}
+.lvl.lvl-error {
+  color: var(--bad);
+}
+
+.demo {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.demo button {
+  padding: 4px 12px;
+}
+
+.filters input.text {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  width: 150px;
+}
+.filters label.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
