@@ -39,7 +39,11 @@ describe("MqttBridge live socket", () => {
       ws.addEventListener("message", (e) => resolve(JSON.parse(String(e.data)) as LiveEvent)),
     );
     ws.accept();
-    expect(await first).toEqual({ type: "snapshot", devices: [] });
+    expect(await first).toMatchObject({
+      type: "snapshot",
+      devices: [],
+      demo: { running: false, devices: [] },
+    });
     ws.close();
   });
 });

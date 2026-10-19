@@ -1,4 +1,9 @@
-import { liveTopicKey, type InboundMessage, type Rejection } from "@udara/contracts";
+import {
+  liveTopicKey,
+  type InboundMessage,
+  type PipelineLog,
+  type Rejection,
+} from "@udara/contracts";
 
 /** One item of `ingest_batch(p_messages)` (supabase/migrations/…_telemetry_storage.sql). */
 export interface StoredMessage {
@@ -52,6 +57,31 @@ export function toStoredRejection(
     device_id: rejection.deviceId ?? null,
     reason: rejection.reason,
     issues: rejection.issues,
+  };
+}
+
+/** One row of `pipeline_logs` (supabase/migrations/…_pipeline_logs.sql, ADR 0008). */
+export interface StoredLog {
+  at: string;
+  level: "info" | "warn" | "error";
+  source: PipelineLog["source"];
+  device_id: string | null;
+  topic: string | null;
+  message: string;
+  detail: PipelineLog["detail"];
+}
+
+/** Log line → storage row, or null for `debug` lines (live only). */
+export function toStoredLog(entry: PipelineLog): StoredLog | null {
+  if (entry.level === "debug") return null;
+  return {
+    at: new Date(entry.at * 1000).toISOString(),
+    level: entry.level,
+    source: entry.source,
+    device_id: entry.deviceId,
+    topic: entry.topic,
+    message: entry.message,
+    detail: entry.detail,
   };
 }
 

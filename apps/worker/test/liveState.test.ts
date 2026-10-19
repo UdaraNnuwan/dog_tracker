@@ -19,20 +19,17 @@ describe("LiveState", () => {
       receivedAt: 105,
       retained: false,
     });
-    expect(s.snapshot()).toEqual({
-      type: "snapshot",
-      devices: [
-        {
-          deviceId: "dog001",
-          latest: {
-            "telemetry/gps": {
-              data: { timestamp: 1, latitude: 6.2, longitude: 79.8 },
-              receivedAt: 105,
-            },
+    expect(s.deviceList()).toEqual([
+      {
+        deviceId: "dog001",
+        latest: {
+          "telemetry/gps": {
+            data: { timestamp: 1, latitude: 6.2, longitude: 79.8 },
+            receivedAt: 105,
           },
         },
-      ],
-    });
+      },
+    ]);
   });
 
   it("keys settings responses by setting name", () => {
@@ -52,7 +49,7 @@ describe("LiveState", () => {
       reason: "invalid_json",
       topic: "pettracker/backend/dog001/telemetry/gps",
     });
-    expect(s.snapshot()).toEqual({ type: "snapshot", devices: [] });
+    expect(s.deviceList()).toEqual([]);
   });
 
   it("evicts the least recently updated device beyond the cap", () => {
@@ -61,7 +58,6 @@ describe("LiveState", () => {
     apply(s, "pettracker/backend/b/telemetry/gps", gps(1));
     apply(s, "pettracker/backend/a/telemetry/gps", gps(2));
     apply(s, "pettracker/backend/c/telemetry/gps", gps(1));
-    const snap = s.snapshot();
-    expect(snap.type === "snapshot" && snap.devices.map((d) => d.deviceId)).toEqual(["a", "c"]);
+    expect(s.deviceList().map((d) => d.deviceId)).toEqual(["a", "c"]);
   });
 });

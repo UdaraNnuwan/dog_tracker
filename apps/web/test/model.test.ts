@@ -1,4 +1,4 @@
-import type { LiveEvent } from "@udara/contracts";
+import type { LiveEvent, PipelineLog } from "@udara/contracts";
 import { describe, expect, it } from "vitest";
 import { REJECTED_KEY, connectivity, emptyModel, reduce, sortDevices } from "../src/live/model.js";
 
@@ -29,10 +29,9 @@ describe("live model", () => {
       [79.1, 6.1],
     ]);
     expect(Object.keys(d.latest)).toEqual(["telemetry/gps", "telemetry/battery"]);
-    expect(m.log.map((e) => e.seq)).toEqual([3, 2, 1]);
   });
 
-  it("counts rejections in the log", () => {
+  it("counts rejections", () => {
     const m = reduce(emptyModel, {
       type: "rejected",
       topic: "pettracker/backend/x/telemetry/gps",
@@ -41,7 +40,6 @@ describe("live model", () => {
       receivedAt: 1,
     });
     expect(m.rejected).toBe(1);
-    expect(m.log[0]).toMatchObject({ ok: false, body: "bad" });
   });
 
   it("keeps trails across a reconnect snapshot", () => {
@@ -63,6 +61,9 @@ describe("live model", () => {
           },
         },
       ],
+      logs: [],
+      demo: { running: false, devices: [], startedAt: null, endsAt: null },
+      requests: [],
     });
     expect(m.devices.dog1!.trail).toHaveLength(2);
     expect(m.devices.dog1!.lastSeen).toBe(200);
@@ -110,5 +111,62 @@ describe("topic log", () => {
       m = reduce(m, msg("dog1", "telemetry/battery", { timestamp: i, percentage: 50 }, i));
     expect(m.byTopic["telemetry/battery"]).toHaveLength(100);
     expect(m.byTopic["telemetry/battery"]![0]!.data.timestamp).toBe(149);
+  });
+});
+
+describe("processing log", () => {
+  const line = (seq: number, at: number, message = `m${seq}`): PipelineLog => ({
+    seq,
+    at,
+    level: "info",
+    source: "ingest",
+    deviceId: "demo01",
+    topic: "telemetry/gps",
+    message,
+    detail: null,
+  });
+  const idle = { running: false, devices: [], startedAt: null, endsAt: null };
+
+  it("prepends live lines and merges snapshot lines without duplicates", () => {
+    let m = reduce(emptyModel, { type: "log", entry: line(1, 100) });
+    m = reduce(m, { type: "log", entry: line(2, 101) });
+    m = reduce(m, {
+      type: "snapshot",
+      devices: [],
+      logs: [line(1, 100), line(2, 101), line(3, 102)],
+      demo: idle,
+      requests: [],
+    });
+    expect(m.logs.map((l) => l.seq)).toEqual([3, 2, 1]);
+  });
+
+  it("tracks the demo state", () => {
+    const running = { running: true, devices: ["demo01"], startedAt: 1, endsAt: 61 };
+    const m = reduce(emptyModel, { type: "demo", demo: running });
+    expect(m.demo).toEqual(running);
+  });
+});
+
+describe("requests", () => {
+  it("keeps the latest state per request_id", () => {
+    const base = {
+      requestId: "r1",
+      deviceId: "demo01",
+      path: "command/reboot",
+      responsePath: "response/reboot",
+      payload: "{}",
+      attempts: 1,
+      sentAt: 1,
+      updatedAt: 1,
+      response: null,
+      error: null,
+    };
+    let m = reduce(emptyModel, { type: "request", request: { ...base, state: "pending" } });
+    m = reduce(m, {
+      type: "request",
+      request: { ...base, state: "success", response: '{"status":"success"}' },
+    });
+    expect(Object.keys(m.requests)).toEqual(["r1"]);
+    expect(m.requests.r1!.state).toBe("success");
   });
 });

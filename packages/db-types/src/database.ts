@@ -201,6 +201,39 @@ export type Database = {
           },
         ];
       };
+      pipeline_logs: {
+        Row: {
+          at: string;
+          detail: Json | null;
+          device_id: string | null;
+          id: number;
+          level: string;
+          message: string;
+          source: string;
+          topic: string | null;
+        };
+        Insert: {
+          at: string;
+          detail?: Json | null;
+          device_id?: string | null;
+          id?: never;
+          level: string;
+          message: string;
+          source: string;
+          topic?: string | null;
+        };
+        Update: {
+          at?: string;
+          detail?: Json | null;
+          device_id?: string | null;
+          id?: never;
+          level?: string;
+          message?: string;
+          source?: string;
+          topic?: string | null;
+        };
+        Relationships: [];
+      };
       rejected_messages: {
         Row: {
           device_id: string | null;

@@ -1,0 +1,66 @@
+/* Device tab: one device's topics, tables, controls and logs (ADR 0009). */
+.device-view .device-split {
+  padding: 12px 16px;
+}
+.device-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.device-view .topbar .demo {
+  margin-left: auto;
+}
+.topic-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.controls-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.controls-card h3 {
+  font-size: 13.5px;
+  margin: 0 0 6px;
+}
+.controls-card table.data td {
+  white-space: normal;
+  vertical-align: middle;
+}
+.controls-card td.actions {
+  text-align: right;
+  width: 1%;
+}
+.moved-note {
+  grid-area: split;
+}
+.device-pick select,
+.device-pick input.text {
+  font: inherit;
+  font-weight: 400;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  width: 200px;
+}
+.topic-item.empty {
+  opacity: 0.6;
+}
+.empty-topic {
+  padding: 10px;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.device-map {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.device-map .map {
+  height: 340px;
+}

@@ -1,9 +1,11 @@
+import { TOPIC_FIELDS } from "@udara/contracts/live";
 import { useEffect, useMemo, useState } from "react";
 import { DeviceMap } from "./DeviceMap.js";
-import { ago, clock, formatField } from "./format.js";
+import { ago, formatField } from "./format.js";
+import { DemoControl } from "./DemoControl.js";
 import { asPayload, batteryPercent, connectivity, sortDevices, type DeviceView } from "./model.js";
-import { TopicLog } from "./TopicLog.js";
 import { useLiveFeed, type FeedStatus } from "./useLiveFeed.js";
+import { useNowSeconds } from "./useNow.js";
 
 const CATEGORY_ORDER = ["telemetry", "status", "event", "response", "settings", "diagnostic"];
 
@@ -13,15 +15,6 @@ const FEED_LABEL: Record<FeedStatus, string> = {
   reconnecting: "reconnecting…",
   disabled: "disabled",
 };
-
-function useNowSeconds(everyMs = 5_000): number {
-  const [now, setNow] = useState(() => Date.now() / 1000);
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now() / 1000), everyMs);
-    return () => clearInterval(id);
-  }, [everyMs]);
-  return now;
-}
 
 function useBridgeState(): string {
   const [state, setState] = useState("…");
@@ -48,7 +41,6 @@ export function LiveView() {
   const now = useNowSeconds();
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [onlySelectedLog, setOnlySelectedLog] = useState(false);
 
   const devices = useMemo(() => sortDevices(Object.values(model.devices)), [model.devices]);
   const visible = devices.filter((d) => d.deviceId.includes(filter.trim().toLowerCase()));
@@ -58,8 +50,6 @@ export function LiveView() {
   useEffect(() => {
     if (!selectedId && devices[0]) setSelectedId(devices[0].deviceId);
   }, [devices, selectedId]);
-
-  const log = onlySelectedLog ? model.log.filter((e) => e.deviceId === selectedId) : model.log;
 
   return (
     <div className="live">
@@ -72,6 +62,7 @@ export function LiveView() {
         <span className="muted">
           {devices.length} device(s) · {model.rejected} rejected message(s)
         </span>
+        {status !== "disabled" && <DemoControl demo={model.demo} />}
         <span className="dev-badge" title="ADR 0004">
           dev live view · no login
         </span>
@@ -118,36 +109,13 @@ export function LiveView() {
           </section>
 
           <section className="panel readings">
-            {selected ? (
-              <Readings device={selected} now={now} />
-            ) : (
-              <p className="muted">Select a device to see its latest data.</p>
-            )}
+            <Readings device={selected} now={now} />
           </section>
 
-          <section className="panel log">
-            <div className="log-head">
-              <h2>Messages</h2>
-              <label className="small">
-                <input
-                  type="checkbox"
-                  checked={onlySelectedLog}
-                  onChange={(e) => setOnlySelectedLog(e.target.checked)}
-                />{" "}
-                selected device only
-              </label>
-            </div>
-            <ol>
-              {log.map((e) => (
-                <li key={e.seq} className={e.ok ? "" : "rejected"}>
-                  <span className="muted">{clock(e.at)}</span> <b>{e.label}</b>
-                  <code>{e.body}</code>
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          <TopicLog byTopic={model.byTopic} deviceFilter={onlySelectedLog ? selectedId : null} />
+          <p className="muted small moved-note">
+            Telemetry tables, their logs and the device&apos;s settings and commands are on the{" "}
+            <a href="#device">Device</a> tab.
+          </p>
         </main>
       )}
     </div>
@@ -180,8 +148,13 @@ function DeviceRow(props: {
   );
 }
 
-function Readings({ device, now }: { device: DeviceView; now: number }) {
-  const keys = Object.keys(device.latest).sort((a, b) => {
+/**
+ * Summary tiles and one card per subscribed topic, always: fields without data show "—", so
+ * the layout is the same before the first message and with no device selected.
+ */
+function Readings({ device, now }: { device: DeviceView | null; now: number }) {
+  const latest = device?.latest ?? {};
+  const keys = [...new Set([...Object.keys(TOPIC_FIELDS), ...Object.keys(latest)])].sort((a, b) => {
     const rank = (k: string) => {
       const i = CATEGORY_ORDER.indexOf(k.split("/")[0] ?? "");
       return i < 0 ? CATEGORY_ORDER.length : i;
@@ -191,28 +164,38 @@ function Readings({ device, now }: { device: DeviceView; now: number }) {
   return (
     <>
       <h2>
-        {device.deviceId}{" "}
-        <span className={`pill ${connectivity(device)}`}>{connectivity(device)}</span>
+        {device ? (
+          <>
+            {device.deviceId}{" "}
+            <span className={`pill ${connectivity(device)}`}>{connectivity(device)}</span>
+          </>
+        ) : (
+          <span className="muted">No device selected · waiting for data</span>
+        )}
       </h2>
       <Summary device={device} now={now} />
       <div className="cards">
         {keys.map((key) => {
-          const reading = device.latest[key]!;
-          const fields = Object.entries(asPayload(reading.data)).filter(
-            ([k]) => k !== "protocol_version",
+          const reading = latest[key];
+          const data = asPayload(reading?.data);
+          // Known fields first (in schema order), then any extra ones the device sent.
+          const names = [...new Set([...(TOPIC_FIELDS[key] ?? []), ...Object.keys(data)])].filter(
+            (k) => k !== "protocol_version",
           );
           return (
-            <article key={key} className={`card ${key.split("/")[0]}`}>
+            <article key={key} className={`card ${key.split("/")[0]} ${reading ? "" : "empty"}`}>
               <header>
                 <b>{key}</b>
-                <span className="muted small">{ago(reading.receivedAt, now)}</span>
+                <span className="muted small">
+                  {reading ? ago(reading.receivedAt, now) : "no data"}
+                </span>
               </header>
               <table>
                 <tbody>
-                  {fields.map(([k, v]) => (
+                  {names.map((k) => (
                     <tr key={k}>
                       <td>{k}</td>
-                      <td>{formatField(k, v)}</td>
+                      <td>{k in data ? formatField(k, data[k]) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -226,12 +209,13 @@ function Readings({ device, now }: { device: DeviceView; now: number }) {
 }
 
 /** The values people look for first: where the dog is and how the collar is doing. */
-function Summary({ device, now }: { device: DeviceView; now: number }) {
-  const gps = device.latest["telemetry/gps"];
+function Summary({ device, now }: { device: DeviceView | null; now: number }) {
+  const latest = device?.latest ?? {};
+  const gps = latest["telemetry/gps"];
   const pos = asPayload(gps?.data);
-  const battery = asPayload(device.latest["telemetry/battery"]?.data);
-  const signal = asPayload(device.latest["telemetry/signal_strength"]?.data);
-  const geofence = asPayload(device.latest["event/geofence"]?.data);
+  const battery = asPayload(latest["telemetry/battery"]?.data);
+  const signal = asPayload(latest["telemetry/signal_strength"]?.data);
+  const geofence = asPayload(latest["event/geofence"]?.data);
   const num = (v: unknown) => (typeof v === "number" ? v : null);
 
   const lat = num(pos.latitude);

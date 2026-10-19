@@ -1,3 +1,4 @@
+import type { DemoStatus, RequestStatus } from "@udara/contracts";
 import type { Tables } from "@udara/db-types";
 
 /** Client for the Worker's history API (ADR 0006). Times are ISO strings from Postgres. */
@@ -34,6 +35,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
+    /** Validation details, e.g. Zod issues for a rejected command. */
+    readonly issues: string[] = [],
   ) {
     super(`${status} ${code}`);
   }
@@ -41,8 +44,19 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
-  const body = (await res.json().catch(() => ({}))) as T & { error?: string; message?: string };
-  if (!res.ok) throw new ApiError(res.status, body.message ?? body.error ?? "request_failed");
+  const body = (await res.json().catch(() => ({}))) as T & {
+    error?: string;
+    message?: string;
+    reason?: string;
+    issues?: string[];
+  };
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      body.message ?? body.reason ?? body.error ?? "request_failed",
+      body.issues ?? [],
+    );
+  }
   return body;
 }
 
@@ -71,6 +85,87 @@ export async function clearHistory(deviceId: string | null): Promise<number> {
   const path = deviceId ? `/api/devices/${encodeURIComponent(deviceId)}/history` : "/api/history";
   return (await request<{ deleted: number }>(path, { method: "DELETE" })).deleted;
 }
+
+// ------------------------------------------------------------------ saved logs (ADR 0008)
+
+export type LogRow = Tables<"pipeline_logs">;
+export type SavedLevel = "info" | "warn" | "error";
+
+export interface LogFilters {
+  from?: Date | null;
+  to?: Date | null;
+  deviceId?: string | null;
+  topic?: string | null;
+  /** Minimum level. */
+  level?: SavedLevel | null;
+  source?: string | null;
+  search?: string | null;
+  /** Older than this id ("load older"). */
+  beforeId?: number | null;
+  /** Newer than this id (live tail). */
+  afterId?: number | null;
+  limit?: number;
+}
+
+/** Saved processing log, newest first. */
+export async function fetchLogs(f: LogFilters = {}): Promise<LogRow[]> {
+  const params = new URLSearchParams();
+  if (f.from) params.set("from", f.from.toISOString());
+  if (f.to) params.set("to", f.to.toISOString());
+  if (f.deviceId) params.set("device", f.deviceId);
+  if (f.topic) params.set("topic", f.topic);
+  if (f.level) params.set("level", f.level);
+  if (f.source) params.set("source", f.source);
+  if (f.search?.trim()) params.set("q", f.search.trim());
+  if (f.beforeId) params.set("before", String(f.beforeId));
+  if (f.afterId) params.set("after", String(f.afterId));
+  params.set("limit", String(f.limit ?? 200));
+  return (await request<{ rows: LogRow[] }>(`/api/logs?${params}`)).rows;
+}
+
+// ------------------------------------------------------------------ commands & settings
+
+const postJson = <T>(path: string, body: unknown) =>
+  request<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+const devicePath = (deviceId: string) => `/api/devices/${encodeURIComponent(deviceId)}`;
+
+/**
+ * Publishes `pettracker/device/{id}/{path}` for a command or settings path, e.g.
+ * `command/buzzer` or `settings/set/gps_interval`. The backend adds timestamp, request_id
+ * (UUID) and protocol_version, validates, and tracks the answer (rule 3).
+ */
+export function sendToDevice(
+  deviceId: string,
+  path: string,
+  fields: Record<string, unknown>,
+): Promise<RequestStatus> {
+  const [kind, a, b] = path.split("/");
+  if (kind === "command" && a) {
+    return postJson(`${devicePath(deviceId)}/commands/${encodeURIComponent(a)}`, fields);
+  }
+  if (kind === "settings" && (a === "set" || a === "get") && b) {
+    return postJson(`${devicePath(deviceId)}/settings/${encodeURIComponent(b)}/${a}`, fields);
+  }
+  return Promise.reject(new Error(`cannot send to ${path}`));
+}
+
+// ------------------------------------------------------------------ demo run (ADR 0008)
+
+export const fetchDemo = () => request<DemoStatus>("/api/demo");
+
+export const startDemo = (opts: { devices?: number; seconds?: number } = {}) =>
+  request<DemoStatus>("/api/demo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  });
+
+export const stopDemo = () => request<DemoStatus>("/api/demo", { method: "DELETE" });
 
 /** Postgres timestamptz → epoch seconds (rule 5: convert at the UI edge only). */
 export const toEpoch = (iso: string) => Date.parse(iso) / 1000;

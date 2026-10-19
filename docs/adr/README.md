@@ -12,3 +12,5 @@ Required for any architectural decision or deviation from the MQTT spec (see CLA
 | [0005](0005-leaflet-instead-of-maplibre.md) | Leaflet instead of MapLibre GL (no WebGL2 requirement) | Accepted |
 | [0006](0006-telemetry-storage-and-history.md) | Telemetry storage, history API and clearing data | Accepted |
 | [0007](0007-csv-replay-test-data.md) | CSV test data and replay | Accepted |
+| [0008](0008-pipeline-logs-and-demo-run.md) | Saved processing logs and a Demo run | Accepted |
+| [0009](0009-dev-commands-before-auth.md) | Sending commands and settings from the dashboard before auth | Accepted |

@@ -1,6 +1,7 @@
 import {
   liveTopicKey,
   type InboundMessage,
+  type LiveDevice,
   type LiveEvent,
   type LiveReading,
   type ParseResult,
@@ -50,13 +51,11 @@ export class LiveState {
     else this.devices.delete(deviceId);
   }
 
-  snapshot(): LiveEvent {
-    return {
-      type: "snapshot",
-      devices: [...this.devices].map(([deviceId, latest]) => ({
-        deviceId,
-        latest: Object.fromEntries(latest),
-      })),
-    };
+  /** Latest readings of every device, for the snapshot a new browser gets. */
+  deviceList(): LiveDevice[] {
+    return [...this.devices].map(([deviceId, latest]) => ({
+      deviceId,
+      latest: Object.fromEntries(latest),
+    }));
   }
 }

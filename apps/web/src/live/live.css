@@ -105,13 +105,13 @@ h2 {
   grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
     "devices map map"
-    "devices readings log"
-    "topics topics topics";
+    "devices readings readings"
+    "split split split";
 }
 @media (max-width: 1000px) {
   .grid {
     grid-template-columns: 1fr;
-    grid-template-areas: "devices" "map" "readings" "log" "topics";
+    grid-template-areas: "devices" "map" "readings" "split";
   }
 }
 .panel {
@@ -131,9 +131,6 @@ h2 {
 }
 .readings {
   grid-area: readings;
-}
-.log {
-  grid-area: log;
 }
 .notice {
   max-width: 640px;
@@ -287,28 +284,8 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-}
-.log ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 520px;
-  overflow: auto;
-  font-size: 12px;
-}
-.log li {
-  padding: 4px 0;
-  border-bottom: 1px solid var(--line);
-}
-.log li code {
-  display: block;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.log li.rejected b {
-  color: var(--bad);
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .crash {
@@ -353,24 +330,103 @@ h2 {
   color: var(--accent);
 }
 
-/* Live log by topic */
-.topic-log {
-  grid-area: topics;
+/* Telemetry tables (2 of 3 columns) + their log lines (1 of 3), ADR 0008 */
+.split {
+  grid-area: split;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.split-main {
+  grid-column: span 2;
+  min-width: 0;
+}
+@media (max-width: 1000px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .split-main {
+    grid-column: auto;
+  }
+}
+.device-scope {
+  display: block;
+  margin: 0 0 6px 4px;
 }
 .topic-log .row {
   display: flex;
   gap: 6px;
 }
-.topic-grid {
+/* Side list of topics + the selected topic's table */
+.topic-split {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  grid-template-columns: 210px minmax(0, 1fr);
   gap: 10px;
   margin-top: 8px;
+  align-items: start;
 }
-@media (max-width: 520px) {
-  .topic-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 700px) {
+  .topic-split {
+    grid-template-columns: minmax(0, 1fr);
   }
+}
+.topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+}
+.topic-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 3px 4px;
+}
+.topic-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-left: 3px solid var(--muted);
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin-bottom: 3px;
+}
+.topic-item:hover {
+  background: var(--bg);
+}
+.topic-item.active {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+.topic-item .name {
+  font-weight: 600;
+}
+.topic-item.telemetry {
+  border-left-color: #2563eb;
+}
+.topic-item.status {
+  border-left-color: #15803d;
+}
+.topic-item.event {
+  border-left-color: #b45309;
+}
+.topic-item.response,
+.topic-item.settings {
+  border-left-color: #7c3aed;
+}
+.topic-item.diagnostic,
+.topic-item.rejected {
+  border-left-color: var(--bad);
 }
 .topic-card {
   border: 1px solid var(--line);
@@ -397,20 +453,19 @@ h2 {
   border-left-color: var(--bad);
 }
 .topic-card .topic-title {
-  width: 100%;
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 8px;
-  background: transparent;
-  color: var(--text);
-  border: none;
-  border-radius: 0;
-  padding: 7px 10px;
-  text-align: left;
+  padding: 8px 10px;
 }
 .topic-card .table-wrap {
-  max-height: 260px;
+  max-height: calc(100vh - 200px);
   border: none;
   border-top: 1px solid var(--line);
   border-radius: 0;
+}
+/* Topic cards without data yet: same layout, dimmed. */
+.card.empty {
+  opacity: 0.55;
 }

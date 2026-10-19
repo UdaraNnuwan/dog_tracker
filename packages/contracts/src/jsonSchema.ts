@@ -56,22 +56,53 @@ function targets(): Target[] {
   return list;
 }
 
+/** One topic of the catalogue with its payload format, for docs and the Topics page. */
+export interface TopicDoc {
+  /** `backend` = device → cloud (the bridge subscribes), `device` = cloud → device (it publishes). */
+  direction: "backend" | "device";
+  /** Path after `pettracker/{direction}/{device_id}/`. */
+  path: string;
+  /** Full topic with a `{device_id}` placeholder. */
+  topic: string;
+  qos: 0 | 1;
+  retain: boolean | "optional";
+  /** Spec sections of the examples, e.g. `["5.1"]`. */
+  sections: string[];
+  /** Examples from the spec (or derived from its field tables). */
+  examples: Record<string, unknown>[];
+  /** JSON Schema of the payload (draft 2020-12, publisher view: extra fields allowed). */
+  schema: Record<string, unknown>;
+}
+
+/** Every topic the system subscribes to or publishes, in catalogue order. */
+export function topicDocs(): TopicDoc[] {
+  return targets().map((t) => {
+    const examples = SPEC_EXAMPLES.filter((e) => e.direction === t.direction && e.path === t.path);
+    return {
+      direction: t.direction,
+      path: t.path,
+      topic: `pettracker/${t.direction}/{device_id}/${t.path}`,
+      qos: t.qos,
+      retain: t.retain,
+      sections: [...new Set(examples.map((e) => e.section))],
+      examples: examples.map((e) => e.payload),
+      schema: z.toJSONSchema(t.schema, { io: "input" }),
+    };
+  });
+}
+
 /** Relative file path (e.g. `backend/telemetry/gps.schema.json`) → JSON Schema document. */
 export function buildJsonSchemas(): Map<string, Record<string, unknown>> {
   const out = new Map<string, Record<string, unknown>>();
-  for (const t of targets()) {
-    const topic = `pettracker/${t.direction}/{device_id}/${t.path}`;
-    const examples = SPEC_EXAMPLES.filter(
-      (e) => e.direction === t.direction && e.path === t.path,
-    ).map((e) => e.payload);
+  for (const t of topicDocs()) {
     const retain = t.retain === "optional" ? "optional" : String(t.retain);
-    const { $schema, ...body } = z.toJSONSchema(t.schema, { io: "input" });
+    const { $schema, ...body } = t.schema;
     out.set(`${t.direction}/${t.path}.schema.json`, {
       $schema,
-      title: topic,
+      title: t.topic,
       description: `Publisher QoS ${t.qos}, retain ${retain}.`,
       ...body,
-      ...(examples.length ? { examples } : {}),
+      ...(t.examples.length ? { examples: t.examples } : {}),
     });
   }
   return out;

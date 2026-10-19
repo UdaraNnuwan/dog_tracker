@@ -1,9 +1,15 @@
-import type { LiveEvent, LiveReading } from "@udara/contracts";
+import type {
+  DemoStatus,
+  LiveEvent,
+  LiveReading,
+  PipelineLog,
+  RequestStatus,
+} from "@udara/contracts";
 
 /** Points kept per device for the map trail. */
 const MAX_TRAIL = 300;
-/** Entries kept in the message log. */
-const MAX_LOG = 200;
+/** Processing-log lines kept in the browser (the rest are in `pipeline_logs`). */
+const MAX_LOGS = 1_000;
 /** Entries kept per topic in the topic log. */
 const MAX_TOPIC_LOG = 100;
 /** Topic-log key for messages that failed validation. */
@@ -20,15 +26,6 @@ export interface DeviceView {
   trail: [number, number][];
 }
 
-export interface LogEntry {
-  seq: number;
-  at: number;
-  ok: boolean;
-  deviceId: string | null;
-  label: string;
-  body: string;
-}
-
 /** One row of a topic section: the message's own fields, newest first. */
 export interface TopicEntry {
   seq: number;
@@ -40,14 +37,42 @@ export interface TopicEntry {
 
 export interface LiveModel {
   devices: Record<string, DeviceView>;
-  log: LogEntry[];
+  /** Bridge processing log (ADR 0008), newest first. */
+  logs: PipelineLog[];
+  demo: DemoStatus;
+  /** Command/settings requests by request_id (rule 3). */
+  requests: Record<string, RequestStatus>;
   /** Per topic key (`telemetry/gps`, …, `rejected`), newest first. */
   byTopic: Record<string, TopicEntry[]>;
   seq: number;
   rejected: number;
 }
 
-export const emptyModel: LiveModel = { devices: {}, log: [], byTopic: {}, seq: 0, rejected: 0 };
+const IDLE_DEMO: DemoStatus = { running: false, devices: [], startedAt: null, endsAt: null };
+
+export const emptyModel: LiveModel = {
+  devices: {},
+  logs: [],
+  demo: IDLE_DEMO,
+  requests: {},
+  byTopic: {},
+  seq: 0,
+  rejected: 0,
+};
+
+/** Identity of a log line across reconnects (seq restarts when the bridge does). */
+export const logKey = (l: PipelineLog) => `${l.at}:${l.seq}`;
+
+/** Newest first: by time, then by sequence within the same second. */
+const newestFirst = (a: PipelineLog, b: PipelineLog) => b.at - a.at || b.seq - a.seq;
+
+/** Adds snapshot lines to the ones already shown, without duplicates. */
+function mergeLogs(current: PipelineLog[], incoming: PipelineLog[]): PipelineLog[] {
+  const seen = new Set(current.map(logKey));
+  const fresh = incoming.filter((l) => !seen.has(logKey(l)));
+  if (fresh.length === 0) return current;
+  return [...current, ...fresh].sort(newestFirst).slice(0, MAX_LOGS);
+}
 
 export const asPayload = (data: unknown): Payload =>
   data !== null && typeof data === "object" ? (data as Payload) : {};
@@ -59,16 +84,14 @@ function lonLat(data: unknown): [number, number] | null {
     : null;
 }
 
-function pushLog(
+function pushTopic(
   model: LiveModel,
-  entry: Omit<LogEntry, "seq">,
   topic: { key: string; entry: Omit<TopicEntry, "seq"> },
-): Pick<LiveModel, "log" | "byTopic" | "seq"> {
+): Pick<LiveModel, "byTopic" | "seq"> {
   const seq = model.seq + 1;
   const previous = model.byTopic[topic.key] ?? [];
   return {
     seq,
-    log: [{ ...entry, seq }, ...model.log].slice(0, MAX_LOG),
     byTopic: {
       ...model.byTopic,
       [topic.key]: [{ ...topic.entry, seq }, ...previous].slice(0, MAX_TOPIC_LOG),
@@ -93,8 +116,28 @@ export function reduce(model: LiveModel, event: LiveEvent): LiveModel {
           trail: model.devices[d.deviceId]?.trail ?? (point ? [point] : []),
         };
       }
-      return { ...model, devices };
+      const requests = { ...model.requests };
+      for (const req of event.requests) requests[req.requestId] = req;
+      return {
+        ...model,
+        devices,
+        logs: mergeLogs(model.logs, event.logs),
+        demo: event.demo,
+        requests,
+      };
     }
+
+    case "request":
+      return {
+        ...model,
+        requests: { ...model.requests, [event.request.requestId]: event.request },
+      };
+
+    case "log":
+      return { ...model, logs: [event.entry, ...model.logs].slice(0, MAX_LOGS) };
+
+    case "demo":
+      return { ...model, demo: event.demo };
 
     case "message": {
       const prev = model.devices[event.deviceId];
@@ -112,25 +155,15 @@ export function reduce(model: LiveModel, event: LiveEvent): LiveModel {
       return {
         ...model,
         devices: { ...model.devices, [event.deviceId]: device },
-        ...pushLog(
-          model,
-          {
+        ...pushTopic(model, {
+          key: event.key,
+          entry: {
             at: event.receivedAt,
-            ok: true,
             deviceId: event.deviceId,
-            label: `${event.deviceId} · ${event.key}${event.retained ? " (retained)" : ""}`,
-            body: JSON.stringify(event.data),
+            retained: event.retained,
+            data: asPayload(event.data),
           },
-          {
-            key: event.key,
-            entry: {
-              at: event.receivedAt,
-              deviceId: event.deviceId,
-              retained: event.retained,
-              data: asPayload(event.data),
-            },
-          },
-        ),
+        }),
       };
     }
 
@@ -138,25 +171,15 @@ export function reduce(model: LiveModel, event: LiveEvent): LiveModel {
       return {
         ...model,
         rejected: model.rejected + 1,
-        ...pushLog(
-          model,
-          {
+        ...pushTopic(model, {
+          key: REJECTED_KEY,
+          entry: {
             at: event.receivedAt,
-            ok: false,
             deviceId: null,
-            label: `${event.topic} · ${event.reason}`,
-            body: event.issues.join("; "),
+            retained: false,
+            data: { topic: event.topic, reason: event.reason, issues: event.issues.join("; ") },
           },
-          {
-            key: REJECTED_KEY,
-            entry: {
-              at: event.receivedAt,
-              deviceId: null,
-              retained: false,
-              data: { topic: event.topic, reason: event.reason, issues: event.issues.join("; ") },
-            },
-          },
-        ),
+        }),
       };
   }
 }

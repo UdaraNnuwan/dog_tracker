@@ -7,10 +7,18 @@ import { connectivity, type DeviceView } from "./model.js";
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
+/** An extra point, e.g. a `response/location` fix or where a geofence event happened. */
+export interface MapPin {
+  latitude: number;
+  longitude: number;
+  label: string;
+}
+
 interface Props {
   devices: DeviceView[];
   selectedId: string | null;
   onSelect: (deviceId: string) => void;
+  pins?: MapPin[];
 }
 
 interface DeviceMarker {
@@ -25,10 +33,11 @@ const toLatLng = ([lon, lat]: [number, number]): L.LatLngTuple => [lat, lon];
  * All devices as markers; the selected one also shows its trail and is kept in view.
  * Leaflet (DOM/SVG, no WebGL) so it renders on any browser (ADR 0005).
  */
-export function DeviceMap({ devices, selectedId, onSelect }: Props) {
+export function DeviceMap({ devices, selectedId, onSelect, pins }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const trail = useRef<L.Polyline | null>(null);
+  const pinLayer = useRef<L.LayerGroup | null>(null);
   const markers = useRef(new Map<string, DeviceMarker>());
   const followed = useRef<string | null>(null);
   const onSelectRef = useRef(onSelect);
@@ -41,6 +50,7 @@ export function DeviceMap({ devices, selectedId, onSelect }: Props) {
     const m = L.map(container.current).setView([6.9271, 79.8612], 14);
     L.tileLayer(TILE_URL, { maxZoom: 19, attribution: ATTRIBUTION }).addTo(m);
     trail.current = L.polyline([], { color: "#2563eb", weight: 3, opacity: 0.7 }).addTo(m);
+    pinLayer.current = L.layerGroup().addTo(m);
     map.current = m;
     const owned = markers.current;
     return () => {
@@ -48,6 +58,7 @@ export function DeviceMap({ devices, selectedId, onSelect }: Props) {
       m.remove();
       map.current = null;
       trail.current = null;
+      pinLayer.current = null;
     };
   }, []);
 
@@ -100,6 +111,28 @@ export function DeviceMap({ devices, selectedId, onSelect }: Props) {
       m.panTo(toLatLng(point));
     }
   }, [devices, selectedId]);
+
+  // Extra pins, newest first: the newest is bigger and brought into view.
+  useEffect(() => {
+    const layer = pinLayer.current;
+    const m = map.current;
+    if (!layer || !m) return;
+    layer.clearLayers();
+    (pins ?? []).forEach((p, i) => {
+      L.circleMarker([p.latitude, p.longitude], {
+        radius: i === 0 ? 8 : 5,
+        color: "#b45309",
+        weight: 2,
+        fillOpacity: i === 0 ? 0.8 : 0.4,
+      })
+        .bindTooltip(p.label)
+        .addTo(layer);
+    });
+    const newest = pins?.[0];
+    if (newest && !m.getBounds().contains([newest.latitude, newest.longitude])) {
+      m.panTo([newest.latitude, newest.longitude]);
+    }
+  }, [pins]);
 
   return <div ref={container} className="map" />;
 }

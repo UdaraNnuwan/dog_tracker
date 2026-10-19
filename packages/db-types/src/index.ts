@@ -1,1 +1,1 @@
-export type { Database, Json, Tables } from "./database.js";
+export type { Database, Json, Tables, TablesInsert } from "./database.js";

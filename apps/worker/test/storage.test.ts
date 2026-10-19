@@ -101,3 +101,48 @@ describe("IngestBuffer", () => {
     expect(b.size).toBe(1);
   });
 });
+
+describe("IngestBuffer outcomes and logs", () => {
+  it("reports what happens to each message", () => {
+    const b = new IngestBuffer();
+    expect(b.add(`${T}/telemetry/gps`, parse("telemetry/gps", gps(1, 6.9)), false, 1)).toBe(
+      "stored",
+    );
+    expect(b.add(`${T}/telemetry/gps`, parse("telemetry/gps", gps(2, 6.9)), false, 2)).toBe(
+      "thinned",
+    );
+    const offline = parse("status/connectivity", { status: "offline" });
+    expect(b.add(`${T}/status/connectivity`, offline, true, 3)).toBe("retained");
+    expect(b.add(`${T}/telemetry/gps`, parse("telemetry/gps", "nope"), false, 4)).toBe("rejected");
+  });
+
+  it("buffers info+ log lines and skips debug", () => {
+    const b = new IngestBuffer();
+    const line = {
+      seq: 1,
+      at: 1_700_000_000,
+      source: "ingest" as const,
+      deviceId: "dog001",
+      topic: "telemetry/gps",
+      message: "m",
+      detail: null,
+    };
+    b.addLog({ ...line, level: "info" });
+    b.addLog({ ...line, level: "debug" });
+    const batch = b.drain();
+    expect(batch.logs).toEqual([
+      {
+        at: "2023-11-14T22:13:20.000Z",
+        level: "info",
+        source: "ingest",
+        device_id: "dog001",
+        topic: "telemetry/gps",
+        message: "m",
+        detail: null,
+      },
+    ]);
+    b.restore(batch);
+    b.clear("dog001");
+    expect(b.size).toBe(0);
+  });
+});

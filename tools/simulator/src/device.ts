@@ -87,6 +87,11 @@ export class SimDevice {
     this.battery = 60 + io.random() * 40;
   }
 
+  /** Current position, rounded like the GPS telemetry. */
+  get position(): LatLon {
+    return { latitude: round(this.pos.latitude, 6), longitude: round(this.pos.longitude, 6) };
+  }
+
   /** Telemetry period in ms: the gps_interval setting once one was applied, else the demo interval. */
   get tickMs(): number {
     return (this.gpsIntervalApplied ? this.settings.gps_interval : this.opts.intervalS) * 1000;

@@ -78,6 +78,9 @@ importers:
       '@udara/db-types':
         specifier: workspace:*
         version: link:../../packages/db-types
+      '@udara/simulator':
+        specifier: workspace:*
+        version: link:../../tools/simulator
       hono:
         specifier: ^4.13.13
         version: 4.13.13

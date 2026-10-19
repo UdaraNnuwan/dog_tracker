@@ -1,15 +1,44 @@
-import { useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { HistoryView } from "./history/HistoryView.js";
 import { LiveView } from "./live/LiveView.js";
+import { LogsView } from "./logs/LogsView.js";
 import "./live/live.css";
 import "./history/history.css";
+import "./logs/logs.css";
+import "./topics/topics.css";
+import "./device/device.css";
 
-type Tab = "live" | "history";
+const TABS = [
+  { id: "live", label: "Live" },
+  { id: "device", label: "Device" },
+  { id: "history", label: "History" },
+  { id: "logs", label: "Logs" },
+  { id: "topics", label: "Topics" },
+] as const;
+type Tab = (typeof TABS)[number]["id"];
 
-// Until the real dashboard (phase 7): live view (ADR 0004) and stored history (ADR 0006).
+// Loaded on demand: they pull in the Zod schemas (topic formats, send forms).
+const DeviceView = lazy(() =>
+  import("./device/DeviceView.js").then((m) => ({ default: m.DeviceView })),
+);
+const TopicsView = lazy(() =>
+  import("./topics/TopicsView.js").then((m) => ({ default: m.TopicsView })),
+);
+
+const fromHash = (): Tab => TABS.find((t) => `#${t.id}` === location.hash)?.id ?? "live";
+
+// Until the real dashboard (phase 7): live view (ADR 0004), per-device data and controls
+// (ADR 0009), stored history (ADR 0006), saved processing logs and the topic catalogue
+// (ADR 0008).
 export function App() {
-  const [tab, setTab] = useState<Tab>(() => (location.hash === "#history" ? "history" : "live"));
+  const [tab, setTab] = useState<Tab>(fromHash);
+  // Links such as `#device` switch tabs too.
+  useEffect(() => {
+    const onHash = () => setTab(fromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const select = (t: Tab) => {
     setTab(t);
     history.replaceState(null, "", `#${t}`);
@@ -17,22 +46,25 @@ export function App() {
   return (
     <ErrorBoundary>
       <nav className="tabs main">
-        <button
-          type="button"
-          className={tab === "live" ? "active" : ""}
-          onClick={() => select("live")}
-        >
-          Live
-        </button>
-        <button
-          type="button"
-          className={tab === "history" ? "active" : ""}
-          onClick={() => select("history")}
-        >
-          History
-        </button>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={tab === t.id ? "active" : ""}
+            onClick={() => select(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
       </nav>
-      {tab === "live" ? <LiveView /> : <HistoryView />}
+      {tab === "live" && <LiveView />}
+      {tab === "history" && <HistoryView />}
+      {tab === "logs" && <LogsView />}
+      {(tab === "device" || tab === "topics") && (
+        <Suspense fallback={<p className="muted notice">Loading…</p>}>
+          {tab === "device" ? <DeviceView /> : <TopicsView />}
+        </Suspense>
+      )}
     </ErrorBoundary>
   );
 }
