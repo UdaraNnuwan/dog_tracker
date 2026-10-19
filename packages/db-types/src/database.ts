@@ -2,6 +2,11 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.18";
+  };
   public: {
     Tables: {
       battery_readings: {
@@ -309,6 +314,7 @@ export type Database = {
         Args: { p_messages: Json; p_rejected?: Json };
         Returns: undefined;
       };
+      is_admin: { Args: never; Returns: boolean };
       is_device_member: { Args: { p_device_id: string }; Returns: boolean };
     };
     Enums: {

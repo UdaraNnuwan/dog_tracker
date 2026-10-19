@@ -8,6 +8,8 @@ import { useSyncExternalStore } from "react";
 export interface SessionUser {
   id: string;
   username: string;
+  /** `admin` has every privilege (Supabase app_metadata.role, ADR 0010). */
+  role: "admin" | "user";
 }
 
 export interface Session {

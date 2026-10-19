@@ -63,6 +63,7 @@ export function App() {
               ))}
               <span className="account">
                 {me.user.username}
+                {me.user.role === "admin" && <span className="pill ok">admin</span>}
                 {!me.dev && (
                   <button type="button" className="ghost" onClick={signOut}>
                     Log out

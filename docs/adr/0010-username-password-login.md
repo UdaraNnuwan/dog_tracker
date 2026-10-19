@@ -32,12 +32,21 @@ it isn't the username/password the owner asked for, and phase 5 needs Supabase A
   call to Supabase Auth. Results are cached for up to 60 s and never past `exp`. Tokens arrive
   as `Authorization: Bearer …`, or for the live WebSocket (where browsers can't send headers)
   as the subprotocol pair `dogtracker.bearer, <token>`; the handshake answers `dogtracker.bearer`.
+- **Admin role.** `app_metadata.role = "admin"` (writable only with the secret key) gives
+  every privilege. Users get it through `pnpm seed:users --admin name:password` or
+  `SEED_ADMINS=name` in `.env`. Re-seeding without it never demotes an existing admin. The
+  role is in the session and `/api/auth/me` (`user.role`). Migration
+  `20261019170000_admin_role.sql` adds `is_admin()`: admins count as members of every device,
+  and can read all memberships, log lines and rejected messages under RLS.
 - Local development without login stays as before: `LIVE_VIEW_UNAUTHENTICATED=true` plus a
   localhost hostname signs in as a `dev` user.
 
 ## Consequences
 
-- Every signed-in user can see all devices and send commands. `device_members` roles
+- Local login: set `LIVE_VIEW_UNAUTHENTICATED=false` (or remove it) to get the same login page
+  on localhost as online. Local and deployed share the Supabase project, so they share users.
+- Every signed-in user can see all devices and send commands; the role isn't enforced in the
+  API yet. `device_members` roles
   (viewer/operator/owner), RLS-scoped reads and `audit_log` are the rest of phase 5.
 - There is no in-app password reset: re-run `pnpm seed:users name:newpassword`.
 - Login has no rate limit of its own; Supabase Auth's limits apply. Add a Worker-side limit

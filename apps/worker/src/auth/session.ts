@@ -8,13 +8,20 @@
  * refreshes and verifies sessions with the server-side client.
  */
 import type { Db } from "../storage/supabase.js";
-import { emailToUsername, usernameToEmail } from "./username.js";
+import { emailToUsername, roleOf, usernameToEmail, type Role } from "./username.js";
 
-export { USERNAME_DOMAIN, emailToUsername, usernameToEmail } from "./username.js";
+export {
+  USERNAME_DOMAIN,
+  emailToUsername,
+  roleOf,
+  usernameToEmail,
+  type Role,
+} from "./username.js";
 
 export interface SessionUser {
   id: string;
   username: string;
+  role: Role;
 }
 
 /** What the browser keeps; times are epoch seconds (rule 5). */
@@ -30,7 +37,7 @@ interface SupabaseSession {
   refresh_token: string;
   expires_at?: number;
   expires_in: number;
-  user: { id: string; email?: string };
+  user: { id: string; email?: string; app_metadata?: unknown };
 }
 
 function toTokens(s: SupabaseSession): SessionTokens {
@@ -38,7 +45,11 @@ function toTokens(s: SupabaseSession): SessionTokens {
     accessToken: s.access_token,
     refreshToken: s.refresh_token,
     expiresAt: s.expires_at ?? Math.floor(Date.now() / 1000) + s.expires_in,
-    user: { id: s.user.id, username: emailToUsername(s.user.email) },
+    user: {
+      id: s.user.id,
+      username: emailToUsername(s.user.email),
+      role: roleOf(s.user.app_metadata),
+    },
   };
 }
 
@@ -72,11 +83,12 @@ export async function verifyAccessToken(db: Db, token: string): Promise<SessionU
 
   const { data, error } = await db.auth.getClaims(token);
   if (error || !data) return null;
-  const { sub, email, exp } = data.claims;
+  const { sub, email, exp, app_metadata } = data.claims;
   if (typeof sub !== "string" || !sub) return null;
   const user = {
     id: sub,
     username: emailToUsername(typeof email === "string" ? email : undefined),
+    role: roleOf(app_metadata),
   };
 
   if (verified.size >= CACHE_MAX) verified.clear();

@@ -100,5 +100,7 @@ The online dashboard asks for a username and password. Create or update accounts
 pnpm seed:users admin:<password> udara:<password>   # or set SEED_USERS in .env and run pnpm seed:users
 ```
 
-Passwords need 8+ characters. Re-running changes the password. In Supabase, turn off
+`--admin` before a pair (or `SEED_ADMINS=admin` in `.env`) gives that user the admin role
+(every privilege). Passwords need 8+ characters. Re-running changes the password. Local
+development uses the same login when `LIVE_VIEW_UNAUTHENTICATED=false`. In Supabase, turn off
 Authentication → Sign In / Providers → "Allow new users to sign up".

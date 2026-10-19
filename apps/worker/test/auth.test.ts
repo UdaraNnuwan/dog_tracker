@@ -4,6 +4,7 @@ import {
   bearerToken,
   clearVerifiedCache,
   emailToUsername,
+  roleOf,
   usernameToEmail,
   verifyAccessToken,
 } from "../src/auth/session.js";
@@ -57,9 +58,29 @@ describe("verifyAccessToken", () => {
   it("returns the user and caches the result", async () => {
     const exp = Date.now() / 1000 + 600;
     const f = fakeDb({ sub: "u1", email: "udara@users.dogtracker.local", exp });
-    expect(await verifyAccessToken(f.db, "t1")).toEqual({ id: "u1", username: "udara" });
+    expect(await verifyAccessToken(f.db, "t1")).toEqual({
+      id: "u1",
+      username: "udara",
+      role: "user",
+    });
     await verifyAccessToken(f.db, "t1");
     expect(f.calls()).toBe(1);
+  });
+
+  it("reads the admin role from app_metadata (only the secret key can set it)", async () => {
+    const exp = Date.now() / 1000 + 600;
+    const f = fakeDb({
+      sub: "a1",
+      email: "admin@users.dogtracker.local",
+      exp,
+      app_metadata: { role: "admin" },
+      user_metadata: { role: "admin" },
+    });
+    expect(await verifyAccessToken(f.db, "t-admin")).toEqual({
+      id: "a1",
+      username: "admin",
+      role: "admin",
+    });
   });
 
   it("rejects invalid tokens", async () => {
@@ -86,7 +107,7 @@ describe("auth API", () => {
       { ...env, LIVE_VIEW_UNAUTHENTICATED: "true" },
     );
     expect(await res.json()).toEqual({
-      user: { id: "dev", username: "dev (localhost)" },
+      user: { id: "dev", username: "dev (localhost)", role: "admin" },
       dev: true,
     });
   });
@@ -102,5 +123,14 @@ describe("auth API", () => {
       SUPABASE_SECRET_KEY: "k",
     };
     expect((await post({ username: 1 }, configured)).status).toBe(400);
+  });
+});
+
+describe("roleOf", () => {
+  it("is admin only for app_metadata.role = admin", () => {
+    expect(roleOf({ role: "admin" })).toBe("admin");
+    expect(roleOf({ role: "owner" })).toBe("user");
+    expect(roleOf(undefined)).toBe("user");
+    expect(roleOf(null)).toBe("user");
   });
 });

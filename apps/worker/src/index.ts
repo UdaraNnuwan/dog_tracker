@@ -57,7 +57,7 @@ app.get("/health", async (c) => {
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /** Signed-in user for local development without a login (ADR 0004). */
-const DEV_USER: SessionUser = { id: "dev", username: "dev (localhost)" };
+const DEV_USER: SessionUser = { id: "dev", username: "dev (localhost)", role: "admin" };
 
 const isLocalDev = (c: { env: Env; req: { url: string } }) =>
   c.env.LIVE_VIEW_UNAUTHENTICATED === "true" && LOCAL_HOSTS.has(new URL(c.req.url).hostname);
