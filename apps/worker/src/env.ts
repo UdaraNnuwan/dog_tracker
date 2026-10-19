@@ -7,10 +7,10 @@ export interface Env {
   // vars (wrangler.jsonc)
   MQTT_CLIENT_ID: string;
   MQTT_KEEPALIVE_SECONDS: string;
-  /** "true" opens /api/live without login. `.dev.vars` only, never deployed (ADR 0004). */
+  /** "true" opens /api/live without login. `.env` only, never deployed (ADR 0004). */
   LIVE_VIEW_UNAUTHENTICATED?: string;
 
-  // secrets (`wrangler secret put` / .dev.vars) — optional so a missing one degrades to
+  // secrets (`wrangler secret put` / .env) — optional so a missing one degrades to
   // bridge state "unconfigured" instead of crashing.
   HIVEMQ_HOST?: string;
   HIVEMQ_USERNAME?: string;

@@ -55,7 +55,7 @@ export function HistoryView() {
       .catch((err: unknown) =>
         setDevicesError(
           err instanceof ApiError && err.code === "storage_not_configured"
-            ? "Storage is not configured: set SUPABASE_URL and SUPABASE_SECRET_KEY in apps/worker/.dev.vars and restart pnpm dev."
+            ? "Storage is not configured: set SUPABASE_URL and SUPABASE_SECRET_KEY in .env and restart pnpm dev."
             : String(err),
         ),
       );

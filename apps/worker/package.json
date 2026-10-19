@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --test-scheduled",
+    "dev": "wrangler dev --test-scheduled --env-file ../../.env",
     "deploy": "wrangler deploy --env=\"\"",
     "deploy:staging": "wrangler deploy --env staging",
     "typecheck": "tsc -p tsconfig.json",

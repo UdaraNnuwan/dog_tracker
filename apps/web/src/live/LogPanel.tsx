@@ -134,7 +134,7 @@ function SavedLogs(props: { deviceId: string | null; topic: string | null; level
         .catch((err: unknown) =>
           setError(
             err instanceof ApiError && err.code === "storage_not_configured"
-              ? "Storage is not configured (SUPABASE_URL / SUPABASE_SECRET_KEY in .dev.vars)."
+              ? "Storage is not configured (SUPABASE_URL / SUPABASE_SECRET_KEY in .env)."
               : String(err),
           ),
         )

@@ -20,10 +20,16 @@ Requires Node 20+ and pnpm (`corepack enable` or `corepack install -g pnpm@10`).
 
 ```sh
 pnpm i
-cp apps/worker/.dev.vars.example apps/worker/.dev.vars   # fill in HiveMQ credentials; never commit
+cp .env.example .env   # fill in HiveMQ credentials; never commit
 pnpm --filter @udara/web build                           # assets the Worker serves
 pnpm dev                                                 # Vite on :5173 (proxies /api) + wrangler dev on :8787
 ```
+
+All local variables live in the repository-root `.env`: Worker bindings, Vite
+(`API_TARGET` and public `VITE_*` values), and simulator/replay (`SIM_MQTT_*`).
+Restart `pnpm dev` after edits. Only `VITE_*` values are exposed to the browser;
+keep secrets unprefixed. Production still uses Wrangler secrets and environment vars.
+
 
 The bridge is started by the cron watchdog. Locally, trigger it with
 `curl http://localhost:8787/cdn-cgi/handler/scheduled`, then check `curl http://localhost:8787/api/health`
@@ -37,7 +43,7 @@ pnpm sim --devices 3 --prefix <yourname>   # fake collars; `pnpm sim --help` for
 
 Open http://localhost:5173. The live view lists devices, shows them on a map and shows the latest
 reading per topic plus a message log. Without login it only opens on localhost with
-`LIVE_VIEW_UNAUTHENTICATED=true` in `.dev.vars` (ADR 0004). On the public broker, pick a unique
+`LIVE_VIEW_UNAUTHENTICATED=true` in `.env` (ADR 0004). On the public broker, pick a unique
 `--prefix`: device ids are shared with everyone.
 
 ### Store data (Supabase)
@@ -50,7 +56,7 @@ supabase db push                            # applies supabase/migrations
 ```
 
 Then set `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (Project Settings → API Keys → secret key,
-`sb_secret_…`) in `apps/worker/.dev.vars` and restart `pnpm dev`. `/api/health` shows
+`sb_secret_…`) in `.env` and restart `pnpm dev`. `/api/health` shows
 `storage.state: "ok"` and `lastFlushAt` once rows are written. The **History** tab shows stored
 data per device and time range (location, battery & temperature, signal, events) and can clear
 it (ADR 0006). After a schema change, run `pnpm db:types`.
@@ -64,7 +70,7 @@ pnpm replay --help            # --only, --device, --loop, --check, --skip-invali
 
 Files: `tools/simulator/test-data/{backend,device}/<topic>.csv` (format in its README, ADR 0007).
 
-Use your own `MQTT_CLIENT_ID` in `.dev.vars`. Sharing the deployed bridge's id makes the broker
+Use your own `MQTT_CLIENT_ID` in `.env`. Sharing the deployed bridge's id makes the broker
 disconnect one bridge for the other (ADR 0001 §4).
 
 ## Checks

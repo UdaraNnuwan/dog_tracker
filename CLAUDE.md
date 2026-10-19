@@ -50,7 +50,7 @@ deliberate deviation in `docs/adr/`.
 ## Non-negotiable rules
 1. **No broker credentials, tokens or secrets in the frontend bundle or in git.** Secrets via
    `wrangler secret put` (HIVEMQ_*, SUPABASE_SECRET_KEY, TELEGRAM_BOT_TOKEN); local dev via
-   `.dev.vars` (gitignored). Browser never talks to HiveMQ. Only the Supabase URL + publishable key go
+   `.env` (gitignored). Browser never talks to HiveMQ. Only the Supabase URL + publishable key go
    to the frontend; the secret key never does. RLS is enabled on every table, no exceptions.
 2. Only `MqttBridge` publishes to MQTT. All publishes are QoS 1 and **retain=false** (spec §10:
    commands must never be retained).

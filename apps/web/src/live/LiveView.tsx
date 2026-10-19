@@ -73,7 +73,7 @@ export function LiveView() {
           <h2>Live view is disabled</h2>
           <p>
             It only runs locally until login exists (phase 5). Set{" "}
-            <code>LIVE_VIEW_UNAUTHENTICATED=true</code> in <code>apps/worker/.dev.vars</code>,
+            <code>LIVE_VIEW_UNAUTHENTICATED=true</code> in <code>.env</code>,
             restart <code>pnpm dev</code> and open the app on <code>localhost</code>.
           </p>
         </main>

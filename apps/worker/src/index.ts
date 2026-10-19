@@ -49,7 +49,7 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /**
  * Until Supabase Auth exists (phase 5), live data, history and clearing are development-only:
- * they need LIVE_VIEW_UNAUTHENTICATED=true (set only in `.dev.vars`) AND a local hostname, so a
+ * they need LIVE_VIEW_UNAUTHENTICATED=true (set only in `.env`) AND a local hostname, so a
  * deployed Worker never serves them without login (ADR 0004, ADR 0006).
  */
 const devOnly: MiddlewareHandler<{ Bindings: Env }> = async (c, next) => {
