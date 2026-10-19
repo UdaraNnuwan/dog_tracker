@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/status/network",
+  "description": "Publisher QoS 0, retain optional.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "connected": {
+      "type": "boolean"
+    },
+    "network_type": {
+      "type": "string"
+    },
+    "operator": {
+      "type": "string"
+    },
+    "ip_address": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "timestamp"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "connected": true,
+      "network_type": "lte",
+      "operator": "example_operator",
+      "ip_address": "10.20.30.40"
+    }
+  ]
+}

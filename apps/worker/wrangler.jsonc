@@ -1,0 +1,47 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "udara-dog-collar",
+  "main": "src/index.ts",
+  // Must not be newer than the workerd bundled with @cloudflare/vitest-pool-workers.
+  "compatibility_date": "2026-08-15",
+  "observability": { "enabled": true },
+
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+
+  "durable_objects": {
+    "bindings": [{ "name": "MQTT_BRIDGE", "class_name": "MqttBridge" }],
+  },
+  // SQLite-backed class: required for Durable Objects on the Workers free plan.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MqttBridge"] }],
+
+  // Bridge watchdog (ADR 0001).
+  "triggers": { "crons": ["* * * * *"] },
+
+  // Secrets (never here): HIVEMQ_HOST, HIVEMQ_USERNAME, HIVEMQ_PASSWORD,
+  // SUPABASE_URL, SUPABASE_SECRET_KEY.
+  "vars": {
+    // Fixed client id + cleanSession=false => HiveMQ keeps our QoS 1 queue across reconnects.
+    // Every environment MUST use its own id, or the broker will kick one bridge off for the other.
+    "MQTT_CLIENT_ID": "udara-dog-collar-bridge",
+    "MQTT_KEEPALIVE_SECONDS": "60",
+  },
+
+  "env": {
+    "staging": {
+      "name": "udara-dog-collar-staging",
+      "durable_objects": {
+        "bindings": [{ "name": "MQTT_BRIDGE", "class_name": "MqttBridge" }],
+      },
+      "triggers": { "crons": ["* * * * *"] },
+      "vars": {
+        "MQTT_CLIENT_ID": "udara-dog-collar-bridge-staging",
+        "MQTT_KEEPALIVE_SECONDS": "60",
+      },
+    },
+  },
+}

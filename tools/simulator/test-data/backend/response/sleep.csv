@@ -1,0 +1,2 @@
+offset_s,device_id,request_id:string,status
+242,csvdog02,req_1004,success

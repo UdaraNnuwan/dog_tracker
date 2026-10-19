@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/response/location",
+  "description": "Publisher QoS 1, retain false.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999999
+        },
+        "protocol_version": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "const": "success"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      },
+      "required": [
+        "timestamp",
+        "request_id",
+        "status",
+        "latitude",
+        "longitude"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999999
+        },
+        "protocol_version": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "failed",
+            "rejected",
+            "unsupported"
+          ]
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      },
+      "required": [
+        "timestamp",
+        "request_id",
+        "status"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330001,
+      "request_id": "req_1003",
+      "status": "success",
+      "latitude": 6.9271,
+      "longitude": 79.8612
+    }
+  ]
+}

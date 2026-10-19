@@ -1,0 +1,21 @@
+# Copy to .dev.vars (gitignored) for `wrangler dev`. Production: `wrangler secret put <NAME>`.
+
+# --- HiveMQ Cloud (Cluster > Overview > "Cluster URL"; host only, no wss:// or port).
+# The bridge connects to wss://<HIVEMQ_HOST>:8884/mqtt.
+HIVEMQ_HOST=xxxxxxxxxxxxxxxx.s1.eu.hivemq.cloud
+# Cluster > Access Management > credentials for the backend bridge (not the device ones).
+# Leave both empty for the anonymous public broker (broker.hivemq.com, dev only; ADR 0003).
+HIVEMQ_USERNAME=
+HIVEMQ_PASSWORD=
+# Use a different client id locally so `wrangler dev` never kicks the deployed bridge off the broker.
+MQTT_CLIENT_ID=udara-dog-collar-bridge-dev-yourname
+
+# --- Supabase (Project Settings > API Keys). Used by the bridge for ingestion from phase 4.
+SUPABASE_URL=https://xxxxxxxxxxxxxxxxxxxx.supabase.co
+# Secret key (sb_secret_…, formerly "service_role"): full DB access, bypasses RLS.
+# Worker only — never in apps/web or git. Project Settings > API Keys > Secret keys.
+SUPABASE_SECRET_KEY=
+
+# --- Live view without login (/api/live). Development only: also requires a localhost URL,
+# so it can't open on a deployed Worker. Remove once Supabase Auth lands (phase 5, ADR 0004).
+LIVE_VIEW_UNAUTHENTICATED=true

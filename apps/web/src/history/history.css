@@ -1,0 +1,173 @@
+/* Tabs, history sections and shared controls (dev dashboard, ADR 0006). */
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button.ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line);
+}
+button.danger {
+  background: var(--bad);
+  border-color: var(--bad);
+}
+select,
+input[type="datetime-local"] {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+.error {
+  color: var(--bad);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tabs button {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 14px;
+  font-weight: 600;
+}
+.tabs button.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.tabs.main {
+  background: var(--panel);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.tabs.sub {
+  margin: 0 16px;
+}
+
+.history {
+  padding: 12px 0;
+}
+.history > .panel {
+  margin: 0 16px 12px;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.filters .chips {
+  margin: 0;
+}
+.chip {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 4px 11px;
+  font-size: 12.5px;
+}
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0 6px;
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.chart {
+  width: 100%;
+  color: var(--muted);
+}
+.table-wrap {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+table.data th,
+table.data td {
+  text-align: left;
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+table.data th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+table.data tbody tr:hover {
+  background: var(--bg);
+}
+table.data td.details {
+  white-space: normal;
+  color: var(--muted);
+}
+tr.cat-event b {
+  color: var(--warn);
+}
+tr.cat-response b,
+tr.cat-settings b {
+  color: #7c3aed;
+}
+tr.cat-diagnostic b {
+  color: var(--bad);
+}
+
+.danger-zone h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.danger-zone .row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}

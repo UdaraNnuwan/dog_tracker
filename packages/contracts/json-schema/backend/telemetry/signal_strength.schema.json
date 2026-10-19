@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/telemetry/signal_strength",
+  "description": "Publisher QoS 0, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "rssi": {
+      "description": "dBm",
+      "type": "number"
+    },
+    "rsrp": {
+      "description": "dBm",
+      "type": "number"
+    },
+    "rsrq": {
+      "description": "dB",
+      "type": "number"
+    },
+    "sinr": {
+      "description": "dB",
+      "type": "number"
+    }
+  },
+  "required": [
+    "timestamp"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "rssi": -79,
+      "rsrp": -101,
+      "rsrq": -11,
+      "sinr": 14
+    }
+  ]
+}

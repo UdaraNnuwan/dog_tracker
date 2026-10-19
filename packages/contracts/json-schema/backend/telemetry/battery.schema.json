@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/telemetry/battery",
+  "description": "Publisher QoS 0, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "voltage": {
+      "type": "number",
+      "minimum": 0,
+      "description": "V"
+    },
+    "percentage": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "estimated state of charge, %"
+    },
+    "charging": {
+      "type": "boolean"
+    },
+    "temperature": {
+      "description": "degC",
+      "type": "number"
+    }
+  },
+  "required": [
+    "timestamp",
+    "voltage",
+    "percentage",
+    "charging"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "voltage": 3.95,
+      "percentage": 82,
+      "charging": false
+    }
+  ]
+}

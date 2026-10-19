@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/settings/response/gps_interval",
+  "description": "Publisher QoS 1, retain optional.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999999
+        },
+        "protocol_version": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "const": "success"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 86400
+        }
+      },
+      "required": [
+        "timestamp",
+        "request_id",
+        "status",
+        "value"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999999
+        },
+        "protocol_version": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "failed",
+            "rejected",
+            "unsupported"
+          ]
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "value": {}
+      },
+      "required": [
+        "timestamp",
+        "request_id",
+        "status"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330001,
+      "request_id": "req_2001",
+      "status": "success",
+      "value": 45
+    }
+  ]
+}

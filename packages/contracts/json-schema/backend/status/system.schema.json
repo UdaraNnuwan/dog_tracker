@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/status/system",
+  "description": "Publisher QoS 0, retain optional.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "firmware_version": {
+      "type": "string"
+    },
+    "uptime": {
+      "description": "s",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "free_memory": {
+      "description": "bytes",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "reset_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "timestamp"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "firmware_version": "1.1.0",
+      "uptime": 86400,
+      "free_memory": 152320,
+      "reset_reason": "power_on"
+    }
+  ]
+}

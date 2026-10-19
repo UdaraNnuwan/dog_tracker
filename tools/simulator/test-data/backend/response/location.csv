@@ -1,0 +1,2 @@
+offset_s,device_id,request_id:string,status,latitude,longitude
+62,csvdog01,req_1001,success,6.9279,79.8619

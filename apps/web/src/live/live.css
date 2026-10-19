@@ -1,0 +1,416 @@
+/* Development live view (ADR 0004). Phase 7 replaces this with Tailwind + shadcn/ui. */
+:root {
+  --bg: #f4f6f9;
+  --panel: #ffffff;
+  --line: #dde2ea;
+  --text: #1b2430;
+  --muted: #66717f;
+  --accent: #2563eb;
+  --ok: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --code: #f1f3f7;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151b;
+    --panel: #1a2029;
+    --line: #2c3542;
+    --text: #e3e8ef;
+    --muted: #8d98a7;
+    --accent: #60a5fa;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --code: #222a35;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    14px/1.45 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+}
+code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+h1,
+h2 {
+  margin: 0;
+}
+h1 {
+  font-size: 17px;
+}
+h2 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 99px;
+  border: 1px solid currentColor;
+}
+.pill.ok,
+.pill.online {
+  color: var(--ok);
+}
+.pill.warn,
+.pill.unknown {
+  color: var(--warn);
+}
+.pill.offline {
+  color: var(--bad);
+}
+.dev-badge {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--warn);
+}
+
+.grid {
+  display: grid;
+  gap: 12px;
+  padding: 12px 16px;
+  grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "devices map map"
+    "devices readings log"
+    "topics topics topics";
+}
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: 1fr;
+    grid-template-areas: "devices" "map" "readings" "log" "topics";
+  }
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 0;
+}
+.devices {
+  grid-area: devices;
+}
+.map-panel {
+  grid-area: map;
+  padding: 0;
+  overflow: hidden;
+}
+.readings {
+  grid-area: readings;
+}
+.log {
+  grid-area: log;
+}
+.notice {
+  max-width: 640px;
+  margin: 40px auto;
+  padding: 0 16px;
+}
+
+.search {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+}
+.devices ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 70vh;
+  overflow: auto;
+}
+.device {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 8px;
+  align-items: center;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.device:hover {
+  background: var(--bg);
+}
+.device.selected {
+  border-color: var(--accent);
+}
+.device .id {
+  font-weight: 600;
+}
+.device .small {
+  grid-column: 2;
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--muted);
+  grid-row: span 2;
+}
+.dot.online {
+  background: var(--ok);
+}
+.dot.offline {
+  background: var(--bad);
+}
+
+.map {
+  height: 420px;
+  width: 100%;
+  /* Keep Leaflet panes below the page's sticky elements. */
+  z-index: 0;
+}
+/* Leaflet divIcon wrapper: no default box, the button centres itself above the point. */
+.marker-icon {
+  background: none;
+  border: none;
+}
+.marker {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  font: 600 11px system-ui;
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 2px solid #fff;
+  background: #64748b;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+.marker[data-state="online"] {
+  background: #15803d;
+}
+.marker[data-state="offline"] {
+  background: #b91c1c;
+}
+.marker.selected {
+  background: #2563eb;
+  z-index: 1;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  max-height: 520px;
+  overflow: auto;
+}
+.card {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--muted);
+  border-radius: 8px;
+  padding: 6px 9px;
+}
+.card.telemetry {
+  border-left-color: #2563eb;
+}
+.card.status {
+  border-left-color: #15803d;
+}
+.card.event {
+  border-left-color: #b45309;
+}
+.card.response,
+.card.settings {
+  border-left-color: #7c3aed;
+}
+.card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12.5px;
+}
+.card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.card td {
+  padding: 1px 0;
+  vertical-align: top;
+  word-break: break-word;
+}
+.card td:first-child {
+  color: var(--muted);
+  padding-right: 8px;
+  white-space: nowrap;
+}
+
+.log-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.log ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 520px;
+  overflow: auto;
+  font-size: 12px;
+}
+.log li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+.log li code {
+  display: block;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.log li.rejected b {
+  color: var(--bad);
+}
+
+.crash {
+  max-width: 760px;
+  margin: 40px auto;
+  padding: 0 16px;
+}
+.crash pre {
+  white-space: pre-wrap;
+  background: var(--code);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.summary > div {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.summary .wide {
+  grid-column: span 2;
+}
+.summary dt {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.summary dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.summary a {
+  color: var(--accent);
+}
+
+/* Live log by topic */
+.topic-log {
+  grid-area: topics;
+}
+.topic-log .row {
+  display: flex;
+  gap: 6px;
+}
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+@media (max-width: 520px) {
+  .topic-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.topic-card {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--muted);
+  border-radius: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+.topic-card.telemetry {
+  border-left-color: #2563eb;
+}
+.topic-card.status {
+  border-left-color: #15803d;
+}
+.topic-card.event {
+  border-left-color: #b45309;
+}
+.topic-card.response,
+.topic-card.settings {
+  border-left-color: #7c3aed;
+}
+.topic-card.diagnostic,
+.topic-card.rejected {
+  border-left-color: var(--bad);
+}
+.topic-card .topic-title {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  border-radius: 0;
+  padding: 7px 10px;
+  text-align: left;
+}
+.topic-card .table-wrap {
+  max-height: 260px;
+  border: none;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}

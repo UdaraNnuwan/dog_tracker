@@ -1,0 +1,2 @@
+offset_s,device_id,request_id:string,peripheral,enabled
+180,csvdog02,req_1003,gps,true

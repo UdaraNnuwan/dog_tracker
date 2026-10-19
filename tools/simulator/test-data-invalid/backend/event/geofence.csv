@@ -1,0 +1,2 @@
+offset_s,device_id,geofence_id:string,event
+8,csvbad01,home,left

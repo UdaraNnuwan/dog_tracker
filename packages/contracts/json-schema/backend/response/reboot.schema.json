@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/response/reboot",
+  "description": "Publisher QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "rejected",
+        "unsupported"
+      ]
+    },
+    "error_code": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "timestamp",
+    "request_id",
+    "status"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330001,
+      "request_id": "req_1003",
+      "status": "success"
+    },
+    {
+      "timestamp": 1717330001,
+      "request_id": "req_1003",
+      "status": "failed",
+      "error_code": "reboot_failed",
+      "message": "Unable to restart device"
+    }
+  ]
+}

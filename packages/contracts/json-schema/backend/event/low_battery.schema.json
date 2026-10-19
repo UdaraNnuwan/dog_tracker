@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/event/low_battery",
+  "description": "Publisher QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "percentage": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "voltage": {
+      "description": "V",
+      "type": "number",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "timestamp"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "percentage": 15,
+      "voltage": 3.55
+    }
+  ]
+}

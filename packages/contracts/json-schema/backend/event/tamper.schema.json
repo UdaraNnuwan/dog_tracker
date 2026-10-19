@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/event/tamper",
+  "description": "Publisher QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "detected": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "timestamp"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "detected": true
+    }
+  ]
+}

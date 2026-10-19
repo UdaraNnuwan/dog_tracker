@@ -1,0 +1,4 @@
+offset_s,device_id,geofence_id:string,event,latitude,longitude
+160,csvdog01,home,exit,6.925779,79.861526
+180,csvdog02,home,exit,6.915552,79.871742
+450,csvdog02,home,enter,6.915963,79.872599

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/event/geofence",
+  "description": "Publisher QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "geofence_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event": {
+      "type": "string",
+      "enum": [
+        "enter",
+        "exit"
+      ]
+    },
+    "latitude": {
+      "type": "number",
+      "minimum": -90,
+      "maximum": 90
+    },
+    "longitude": {
+      "type": "number",
+      "minimum": -180,
+      "maximum": 180
+    }
+  },
+  "required": [
+    "timestamp",
+    "geofence_id",
+    "event"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "geofence_id": "home",
+      "event": "exit"
+    }
+  ]
+}

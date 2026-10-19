@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/device/{device_id}/settings/get/gps_interval",
+  "description": "Publisher QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  },
+  "required": [
+    "timestamp",
+    "request_id"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "request_id": "req_2002"
+    }
+  ]
+}

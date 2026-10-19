@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/telemetry/imu",
+  "description": "Publisher QoS 0, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "accelerometer": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "description": "m/s^2"
+    },
+    "gyroscope": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "description": "deg/s"
+    }
+  },
+  "required": [
+    "timestamp",
+    "accelerometer",
+    "gyroscope"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "accelerometer": {
+        "x": 0.12,
+        "y": -0.03,
+        "z": 9.78
+      },
+      "gyroscope": {
+        "x": 0.4,
+        "y": -0.2,
+        "z": 0.1
+      }
+    }
+  ]
+}

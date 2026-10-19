@@ -1,0 +1,3 @@
+offset_s,device_id,gps,imu,temperature
+5,csvdog01,ok,ok,ok
+5,csvdog02,ok,ok,ok

@@ -1,0 +1,3 @@
+offset_s,device_id,connected,network_type,operator,ip_address:string
+1,csvdog01,true,lte,example_operator,10.20.30.40
+1,csvdog02,true,lte,example_operator,10.20.30.41

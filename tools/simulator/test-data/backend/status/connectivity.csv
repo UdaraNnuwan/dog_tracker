@@ -1,0 +1,5 @@
+offset_s,device_id,status
+0,csvdog01,online
+0,csvdog02,online
+600,csvdog01,offline
+600,csvdog02,offline

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/backend/{device_id}/status/connectivity",
+  "description": "Publisher QoS 1, retain true.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "protocol_version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "online",
+        "offline"
+      ]
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "status": "online"
+    },
+    {
+      "status": "offline"
+    }
+  ]
+}

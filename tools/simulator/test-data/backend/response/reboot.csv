@@ -1,0 +1,2 @@
+offset_s,device_id,request_id:string,status,error_code:string,message
+542,csvdog01,req_1005,failed,reboot_failed,Unable to restart device
