@@ -1,5 +1,7 @@
 import type { LiveEvent } from "@udara/contracts";
 import { useEffect, useReducer, useState } from "react";
+import { authHeaders } from "../api.js";
+import { accessToken } from "../auth/session.js";
 import { emptyModel, reduce } from "./model.js";
 
 export type FeedStatus = "connecting" | "live" | "reconnecting" | "disabled";
@@ -28,7 +30,7 @@ export function useLiveFeed() {
 
     const connect = async () => {
       try {
-        const probe = await fetch("/api/live");
+        const probe = await fetch("/api/live", { headers: await authHeaders() });
         if (probe.status === 401) {
           setStatus("disabled");
           return;
@@ -40,7 +42,13 @@ export function useLiveFeed() {
       if (closed) return;
 
       const scheme = location.protocol === "https:" ? "wss" : "ws";
-      ws = new WebSocket(`${scheme}://${location.host}/api/live`);
+      // Browsers can't set headers on a WebSocket: the token goes in the subprotocol (ADR 0010).
+      const token = await accessToken();
+      if (closed) return;
+      ws = new WebSocket(
+        `${scheme}://${location.host}/api/live`,
+        token ? ["dogtracker.bearer", token] : undefined,
+      );
       ws.onopen = () => setStatus("live");
       ws.onmessage = (e) => {
         try {

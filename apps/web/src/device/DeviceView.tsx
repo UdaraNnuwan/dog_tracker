@@ -67,8 +67,8 @@ export function DeviceView() {
       <main className="notice">
         <h2>Device view is disabled</h2>
         <p>
-          Set <code>LIVE_VIEW_UNAUTHENTICATED=true</code> in <code>.env</code>,
-          restart <code>pnpm dev</code> and open the app on <code>localhost</code>.
+          Set <code>LIVE_VIEW_UNAUTHENTICATED=true</code> in <code>.env</code>, restart{" "}
+          <code>pnpm dev</code> and open the app on <code>localhost</code>.
         </p>
       </main>
     );

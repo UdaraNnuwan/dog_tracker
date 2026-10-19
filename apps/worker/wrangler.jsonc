@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "udara-dog-collar",
+  "name": "dogtracker",
   "main": "src/index.ts",
   // Must not be newer than the workerd bundled with @cloudflare/vitest-pool-workers.
   "compatibility_date": "2026-08-15",
@@ -23,7 +23,7 @@
   "triggers": { "crons": ["* * * * *"] },
 
   // Secrets (never here): HIVEMQ_HOST, HIVEMQ_USERNAME, HIVEMQ_PASSWORD,
-  // SUPABASE_URL, SUPABASE_SECRET_KEY.
+  // SUPABASE_URL, SUPABASE_SECRET_KEY (also used for login, ADR 0010).
   "vars": {
     // Fixed client id + cleanSession=false => HiveMQ keeps our QoS 1 queue across reconnects.
     // Every environment MUST use its own id, or the broker will kick one bridge off for the other.
@@ -33,7 +33,7 @@
 
   "env": {
     "staging": {
-      "name": "udara-dog-collar-staging",
+      "name": "dogtracker-staging",
       "durable_objects": {
         "bindings": [{ "name": "MQTT_BRIDGE", "class_name": "MqttBridge" }],
       },

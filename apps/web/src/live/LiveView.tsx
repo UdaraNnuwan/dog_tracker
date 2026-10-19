@@ -70,11 +70,10 @@ export function LiveView() {
 
       {status === "disabled" ? (
         <main className="notice">
-          <h2>Live view is disabled</h2>
+          <h2>Sign-in required</h2>
           <p>
-            It only runs locally until login exists (phase 5). Set{" "}
-            <code>LIVE_VIEW_UNAUTHENTICATED=true</code> in <code>.env</code>,
-            restart <code>pnpm dev</code> and open the app on <code>localhost</code>.
+            Your session has expired. Reload the page and sign in again. Locally you can skip login
+            with <code>LIVE_VIEW_UNAUTHENTICATED=true</code> in <code>.env</code>.
           </p>
         </main>
       ) : (

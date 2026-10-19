@@ -1,3 +1,4 @@
+import { accessToken, getSession, logout, type SessionUser } from "./auth/session.js";
 import type { DemoStatus, RequestStatus } from "@udara/contracts";
 import type { Tables } from "@udara/db-types";
 
@@ -42,8 +43,18 @@ export class ApiError extends Error {
   }
 }
 
+/** Adds the signed-in user's bearer token (ADR 0010). */
+export async function authHeaders(init?: HeadersInit): Promise<Headers> {
+  const headers = new Headers(init);
+  const token = await accessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return headers;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
+  const res = await fetch(path, { ...init, headers: await authHeaders(init?.headers) });
+  // An expired or revoked session: back to the login page.
+  if (res.status === 401 && getSession()) logout();
   const body = (await res.json().catch(() => ({}))) as T & {
     error?: string;
     message?: string;
@@ -59,6 +70,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return body;
 }
+
+export interface Me {
+  user: SessionUser;
+  /** True for local development without login (ADR 0004). */
+  dev: boolean;
+}
+
+export const fetchMe = () => request<Me>("/api/auth/me");
 
 export async function fetchDevices(): Promise<DeviceRow[]> {
   return (await request<{ devices: DeviceRow[] }>("/api/devices")).devices;

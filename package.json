@@ -10,6 +10,7 @@
     "dev": "pnpm --parallel --filter @udara/web --filter @udara/worker dev",
     "sim": "pnpm --filter @udara/simulator start",
     "replay": "pnpm --filter @udara/simulator replay",
+    "seed:users": "pnpm --filter @udara/worker seed:users",
     "build": "pnpm -r build",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "pnpm -r typecheck",

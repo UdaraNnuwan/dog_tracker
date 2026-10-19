@@ -10,6 +10,14 @@ import {
   type OutboundMessage,
   type ParseResult,
 } from "@udara/contracts";
+import {
+  bearerToken,
+  login,
+  refresh,
+  verifyAccessToken,
+  WS_PROTOCOL,
+  type SessionUser,
+} from "./auth/session.js";
 import { BRIDGE_ID } from "./bridge/MqttBridge.js";
 import type { Env } from "./env.js";
 import { log } from "./log.js";
@@ -25,7 +33,8 @@ function bridge(env: Env) {
 
 // Static assets (the SPA) are served by the platform; only /api/* reaches this app
 // (`assets.run_worker_first` in wrangler.jsonc).
-export const app = new Hono<{ Bindings: Env }>().basePath("/api");
+type AppEnv = { Bindings: Env; Variables: { user: SessionUser } };
+export const app = new Hono<AppEnv>().basePath("/api");
 
 // Public on purpose: exposes coarse state only, no error text (could leak hostnames).
 app.get("/health", async (c) => {
@@ -47,18 +56,62 @@ app.get("/health", async (c) => {
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
+/** Signed-in user for local development without a login (ADR 0004). */
+const DEV_USER: SessionUser = { id: "dev", username: "dev (localhost)" };
+
+const isLocalDev = (c: { env: Env; req: { url: string } }) =>
+  c.env.LIVE_VIEW_UNAUTHENTICATED === "true" && LOCAL_HOSTS.has(new URL(c.req.url).hostname);
+
 /**
- * Until Supabase Auth exists (phase 5), live data, history and clearing are development-only:
- * they need LIVE_VIEW_UNAUTHENTICATED=true (set only in `.env`) AND a local hostname, so a
- * deployed Worker never serves them without login (ADR 0004, ADR 0006).
+ * Live data, history, logs, commands and clearing need a signed-in user (ADR 0010): a valid
+ * Supabase access token as `Authorization: Bearer …` (or, for the live WebSocket, in the
+ * subprotocol). Local development may skip login with LIVE_VIEW_UNAUTHENTICATED=true on a
+ * localhost hostname, which a deployed Worker never has.
  */
-const devOnly: MiddlewareHandler<{ Bindings: Env }> = async (c, next) => {
-  const local = LOCAL_HOSTS.has(new URL(c.req.url).hostname);
-  if (c.env.LIVE_VIEW_UNAUTHENTICATED !== "true" || !local) {
-    return c.json({ error: "auth_required" }, 401);
+const devOnly: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (isLocalDev(c)) {
+    c.set("user", DEV_USER);
+    return next();
   }
-  await next();
+  const db = serviceClient(c.env);
+  const token = bearerToken(c.req.raw);
+  if (!db || !token) return c.json({ error: "auth_required" }, 401);
+  const user = await verifyAccessToken(db, token);
+  if (!user) return c.json({ error: "auth_required" }, 401);
+  c.set("user", user);
+  return next();
 };
+
+// ------------------------------------------------------------------ auth (ADR 0010)
+
+app.post("/auth/login", async (c) => {
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const { username, password } = await jsonBody(c.req.raw);
+  if (typeof username !== "string" || typeof password !== "string") {
+    return c.json({ error: "bad_request", message: "username and password are required" }, 400);
+  }
+  const session = await login(db, username, password);
+  if (!session) {
+    log("warn", "login failed", { username: username.slice(0, 64) });
+    return c.json({ error: "invalid_credentials" }, 401);
+  }
+  log("info", "login", { username: session.user.username });
+  return c.json(session);
+});
+
+app.post("/auth/refresh", async (c) => {
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const { refreshToken } = await jsonBody(c.req.raw);
+  if (typeof refreshToken !== "string") return c.json({ error: "bad_request" }, 400);
+  const session = await refresh(db, refreshToken);
+  return session ? c.json(session) : c.json({ error: "auth_required" }, 401);
+});
+
+/** Who am I: the browser uses it to decide between the login page and the app. */
+app.use("/auth/me", devOnly);
+app.get("/auth/me", (c) => c.json({ user: c.get("user"), dev: c.get("user") === DEV_USER }));
 
 app.use("/live", devOnly);
 app.use("/devices", devOnly);
@@ -68,12 +121,24 @@ app.use("/demo", devOnly);
 app.use("/logs", devOnly);
 app.use("/requests", devOnly);
 
-app.get("/live", (c) => {
+app.get("/live", async (c) => {
   // A plain GET is the browser's availability probe (it can't read a failed upgrade's status).
   if (c.req.header("Upgrade")?.toLowerCase() !== "websocket") {
     return c.json({ live: "available" });
   }
-  return bridge(c.env).fetch(c.req.raw);
+  const res = await bridge(c.env).fetch(c.req.raw);
+  // The browser offered the token as a subprotocol; the handshake must select one.
+  const offered =
+    c.req
+      .header("Sec-WebSocket-Protocol")
+      ?.split(",")
+      .map((p) => p.trim()) ?? [];
+  if (res.status !== 101 || !res.webSocket || !offered.includes(WS_PROTOCOL)) return res;
+  return new Response(null, {
+    status: 101,
+    webSocket: res.webSocket,
+    headers: { "Sec-WebSocket-Protocol": WS_PROTOCOL },
+  });
 });
 
 const storageMissing = { error: "storage_not_configured" } as const;

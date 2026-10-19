@@ -81,7 +81,24 @@ pnpm lint && pnpm typecheck && pnpm test
 
 ## Deploy
 
-Secrets (once per environment): `wrangler secret put HIVEMQ_HOST`, `HIVEMQ_USERNAME`, `HIVEMQ_PASSWORD`,
-`SUPABASE_URL`, `SUPABASE_SECRET_KEY`
-(add `--env staging` for staging). Then `pnpm --filter @udara/worker deploy`
-(or `deploy:staging`) after building the web app.
+Worker name: `dogtracker` (Cloudflare Workers Builds from git, or `pnpm --filter @udara/worker deploy`).
+
+Workers Builds settings: build command `pnpm --filter @udara/web build`, deploy command
+`pnpm --filter @udara/worker run deploy`, non-production branch deploy command
+`pnpm --filter @udara/worker exec wrangler versions upload`. Node 22 comes from `.nvmrc`.
+
+Secrets (once per environment, `npx wrangler secret put <NAME>` in `apps/worker`, add
+`--env staging` for staging): `HIVEMQ_HOST` (+ `HIVEMQ_USERNAME`, `HIVEMQ_PASSWORD` for HiveMQ
+Cloud), `SUPABASE_URL`, `SUPABASE_SECRET_KEY`. Never set `LIVE_VIEW_UNAUTHENTICATED` on a
+deployed Worker.
+
+### Users (ADR 0010)
+
+The online dashboard asks for a username and password. Create or update accounts with:
+
+```sh
+pnpm seed:users admin:<password> udara:<password>   # or set SEED_USERS in .env and run pnpm seed:users
+```
+
+Passwords need 8+ characters. Re-running changes the password. In Supabase, turn off
+Authentication → Sign In / Providers → "Allow new users to sign up".

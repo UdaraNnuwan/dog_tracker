@@ -14,3 +14,4 @@ Required for any architectural decision or deviation from the MQTT spec (see CLA
 | [0007](0007-csv-replay-test-data.md) | CSV test data and replay | Accepted |
 | [0008](0008-pipeline-logs-and-demo-run.md) | Saved processing logs and a Demo run | Accepted |
 | [0009](0009-dev-commands-before-auth.md) | Sending commands and settings from the dashboard before auth | Accepted |
+| [0010](0010-username-password-login.md) | Username + password login (Supabase Auth, seeded users) | Accepted |
