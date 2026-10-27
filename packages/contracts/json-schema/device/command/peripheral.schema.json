@@ -1,16 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/device/{device_id}/command/peripheral",
-  "description": "Publisher QoS 1, retain false.",
+  "title": "pettracker/{device_id}/device/command/peripheral",
+  "description": "Published by the backend, QoS 1, retain false.",
   "type": "object",
   "properties": {
     "timestamp": {
       "type": "integer",
       "minimum": 0,
       "maximum": 99999999999
-    },
-    "protocol_version": {
-      "type": "string"
     },
     "request_id": {
       "type": "string",
@@ -19,7 +16,8 @@
     },
     "peripheral": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "e.g. speaker"
     },
     "enabled": {
       "type": "boolean"
@@ -31,11 +29,12 @@
     "peripheral",
     "enabled"
   ],
+  "additionalProperties": false,
   "examples": [
     {
       "timestamp": 1717330000,
-      "request_id": "req_1005",
-      "peripheral": "gps",
+      "request_id": "REQ_1003",
+      "peripheral": "speaker",
       "enabled": false
     }
   ]

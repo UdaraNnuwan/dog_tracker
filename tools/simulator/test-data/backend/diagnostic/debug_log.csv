@@ -1,2 +1,3 @@
-offset_s,device_id,message
-100,csvdog02,gnss cold start took 31 s
+offset_s,device_id,level,module,message
+100,csvdog02,info,gps,GNSS fix acquired
+101,csvdog02,warn,gps,gnss cold start took 31 s

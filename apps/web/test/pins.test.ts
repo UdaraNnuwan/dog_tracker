@@ -18,30 +18,30 @@ const gps = [
 ];
 
 describe("pinsFor", () => {
-  it("uses the event's own position when it has one", () => {
+  it("pins location responses at their fix (spec V3 §5)", () => {
     const rows = [
       row("d1", {
         timestamp: 150,
-        geofence_id: "home",
-        event: "exit",
-        latitude: 6.5,
-        longitude: 79.5,
+        request_id: "r",
+        status: "success",
+        location: { latitude: 6.5, longitude: 79.5, accuracy_m: 5, fix_valid: true },
       }),
     ];
-    expect(pinsFor("event/geofence", rows, gps, "d1")).toMatchObject([
+    expect(pinsFor("response/location", rows, gps, "d1")).toMatchObject([
       { latitude: 6.5, longitude: 79.5 },
     ]);
   });
 
   it("places geofence events without a position at the nearest GPS fix of that device", () => {
-    const rows = [row("d1", { timestamp: 190, geofence_id: "home", event: "enter" })];
+    const rows = [row("d1", { timestamp: 190, in_status: false, out_status: true })];
     const [pin] = pinsFor("event/geofence", rows, gps, "d1");
     expect(pin).toMatchObject({ latitude: 6.2, longitude: 79.2 });
+    expect(pin!.label).toContain("left the geofence");
     expect(pin!.label).toMatch(/≈ nearest GPS fix/);
   });
 
   it("skips events with no fix nearby, other devices and GPS itself", () => {
-    const far = [row("d1", { timestamp: 5_000, geofence_id: "home", event: "exit" })];
+    const far = [row("d1", { timestamp: 5_000, in_status: false, out_status: true })];
     expect(pinsFor("event/geofence", far, gps, "d1")).toEqual([]);
     const other = [row("d2", { timestamp: 190, latitude: 7, longitude: 80 })];
     expect(pinsFor("response/location", other, gps, "d1")).toEqual([]);

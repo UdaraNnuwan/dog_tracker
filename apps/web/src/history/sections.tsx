@@ -97,8 +97,6 @@ export function LocationSection({ deviceId, range }: SectionProps) {
                     <th>Latitude</th>
                     <th>Longitude</th>
                     <th>Speed</th>
-                    <th>Accuracy</th>
-                    <th>Sats</th>
                     <th>Received</th>
                   </tr>
                 </thead>
@@ -115,8 +113,6 @@ export function LocationSection({ deviceId, range }: SectionProps) {
                         <td>{p.latitude.toFixed(6)}</td>
                         <td>{p.longitude.toFixed(6)}</td>
                         <td>{p.speed === null ? "—" : `${(p.speed * 3.6).toFixed(1)} km/h`}</td>
-                        <td>{p.accuracy === null ? "—" : `${p.accuracy} m`}</td>
-                        <td>{p.satellites ?? "—"}</td>
                         <td className="muted">{dateTime(p.received_at)}</td>
                       </tr>
                     );
@@ -131,7 +127,7 @@ export function LocationSection({ deviceId, range }: SectionProps) {
   );
 }
 
-// ------------------------------------------------------------------ battery & temperature
+// ------------------------------------------------------------------ battery
 
 export function BatterySection({ deviceId, range }: SectionProps) {
   const state = useHistory(deviceId, "battery", range);
@@ -144,12 +140,6 @@ export function BatterySection({ deviceId, range }: SectionProps) {
           unit: "%",
           color: "#15803d",
           values: state.rows.map((r) => r.percentage),
-        },
-        {
-          label: "Temperature",
-          unit: "°C",
-          color: "#dc2626",
-          values: state.rows.map((r) => r.temperature),
         },
       ],
     }),
@@ -170,7 +160,6 @@ export function BatterySection({ deviceId, range }: SectionProps) {
                 <tr>
                   <th>Device time</th>
                   <th>Battery</th>
-                  <th>Temperature</th>
                   <th>Voltage</th>
                   <th>Charging</th>
                 </tr>
@@ -180,9 +169,69 @@ export function BatterySection({ deviceId, range }: SectionProps) {
                   <tr key={r.ts}>
                     <td>{dateTime(r.ts)}</td>
                     <td>{r.percentage}%</td>
-                    <td>{r.temperature === null ? "—" : `${fixed(r.temperature, 1)} °C`}</td>
                     <td>{fixed(r.voltage, 2)} V</td>
                     <td>{r.charging ? "yes" : "no"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </Status>
+  );
+}
+
+// ------------------------------------------------------------------ environment (BME)
+
+export function EnvironmentSection({ deviceId, range }: SectionProps) {
+  const state = useHistory(deviceId, "environment", range);
+  const chart = useMemo(
+    () => ({
+      x: state.rows.map((r) => toEpoch(r.ts)),
+      series: [
+        {
+          label: "Temperature",
+          unit: "°C",
+          color: "#dc2626",
+          values: state.rows.map((r) => r.temperature),
+        },
+        {
+          label: "Humidity",
+          unit: "%",
+          color: "#2563eb",
+          values: state.rows.map((r) => r.humidity),
+        },
+      ],
+    }),
+    [state.rows],
+  );
+  return (
+    <Status state={state}>
+      {() => (
+        <>
+          <TimeSeriesChart x={chart.x} series={chart.series} />
+          <Toolbar
+            count={state.rows.length}
+            onCsv={() => downloadCsv(`${deviceId}-environment.csv`, state.rows)}
+          />
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>Device time</th>
+                  <th>Temperature</th>
+                  <th>Humidity</th>
+                  <th>Pressure</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...state.rows].reverse().map((r) => (
+                  <tr key={r.ts}>
+                    <td>{dateTime(r.ts)}</td>
+                    <td>{fixed(r.temperature, 1)} °C</td>
+                    <td>{fixed(r.humidity, 1)}%</td>
+                    <td>{fixed(r.pressure, 1)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -202,9 +251,18 @@ export function SignalSection({ deviceId, range }: SectionProps) {
     () => ({
       x: state.rows.map((r) => toEpoch(r.ts)),
       series: [
-        { label: "RSSI", unit: "dBm", color: "#2563eb", values: state.rows.map((r) => r.rssi) },
-        { label: "RSRP", unit: "dBm", color: "#7c3aed", values: state.rows.map((r) => r.rsrp) },
-        { label: "SINR", unit: "dB", color: "#d97706", values: state.rows.map((r) => r.sinr) },
+        {
+          label: "Lower limit",
+          unit: "strength",
+          color: "#2563eb",
+          values: state.rows.map((r) => r.strength_lower_limit),
+        },
+        {
+          label: "Upper limit",
+          unit: "strength",
+          color: "#7c3aed",
+          values: state.rows.map((r) => r.strength_upper_limit),
+        },
       ],
     }),
     [state.rows],
@@ -319,9 +377,9 @@ export function DataSection({
     <div className="danger-zone">
       <h3>Clear stored data</h3>
       <p className="muted small">
-        Removes history (location, battery, signal, events, rejected messages) from the database and
-        the live view. Devices nobody is a member of are removed too. New messages are stored again
-        as they arrive.
+        Removes history (location, battery, temperature, signal, events, rejected messages) from the
+        database and the live view. Devices nobody is a member of are removed too. New messages are
+        stored again as they arrive.
       </p>
       <div className="row">
         <button

@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type
+232,csvdog02,ack,set_2004,power

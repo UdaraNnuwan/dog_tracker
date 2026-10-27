@@ -1,0 +1,2 @@
+offset_s,device_id,request_id:string,status,applied.tracking_enabled,applied.report_interval_seconds
+32,csvdog01,REQ_1000,success,true,30

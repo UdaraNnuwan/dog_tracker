@@ -11,19 +11,18 @@ export function ago(epochS: number, nowS: number): string {
 
 export const clock = (epochS: number) => new Date(epochS * 1000).toLocaleTimeString();
 
-/** Units from the spec field tables (§5); speed is shown in km/h (CLAUDE.md §18 defaults). */
+/** Units from the spec field tables (V3); speed is shown in km/h (CLAUDE.md §18 defaults). */
 const UNITS: Record<string, string> = {
   voltage: "V",
   percentage: "%",
+  threshold_percentage: "%",
   temperature: "°C",
-  accuracy: "m",
-  rssi: "dBm",
-  rsrp: "dBm",
-  rsrq: "dB",
-  sinr: "dB",
-  uptime: "s",
-  free_memory: "B",
-  value: "",
+  humidity: "%",
+  accuracy_m: "m",
+  uptime_seconds: "s",
+  free_heap_bytes: "B",
+  duration_ms: "ms",
+  duration_seconds: "s",
 };
 
 export function formatField(key: string, value: unknown): string {

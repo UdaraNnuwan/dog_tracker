@@ -23,14 +23,14 @@ const req = {
   path: "command/buzzer",
   responsePath: "response/buzzer",
   payload:
-    '{"timestamp":1,"request_id":"11111111-2222-3333-4444-555555555555","enabled":true,"duration":3}',
+    '{"timestamp":1,"request_id":"11111111-2222-3333-4444-555555555555","enabled":true,"duration_ms":3000}',
 };
 
 describe("responsePathFor", () => {
   it("maps commands and settings to their response topics", () => {
     expect(responsePathFor("command/reboot")).toBe("response/reboot");
-    expect(responsePathFor("settings/set/gps_interval")).toBe("settings/response/gps_interval");
-    expect(responsePathFor("settings/get/gps_interval")).toBe("settings/response/gps_interval");
+    expect(responsePathFor("settings/set/gps_settings")).toBe("settings/ack/gps_settings");
+    expect(responsePathFor("settings/get/gps_settings")).toBe("settings/response/gps_settings");
     expect(responsePathFor("telemetry/gps")).toBeNull();
   });
 });
@@ -73,19 +73,37 @@ describe("RequestTracker (rule 3)", () => {
     ]);
   });
 
-  it("reports failed sends as error", async () => {
+  it("reports failed sends as failed", async () => {
     const { tracker } = setup(() => Promise.reject(new Error("mqtt not connected")));
-    expect(await tracker.start(req)).toMatchObject({ state: "error", error: "mqtt not connected" });
+    expect(await tracker.start(req)).toMatchObject({
+      state: "failed",
+      error: "mqtt not connected",
+    });
   });
 
-  it("treats a device's failure answer as final", async () => {
+  it("treats a device's error answer as final", async () => {
     const { tracker } = setup();
     await tracker.start(req);
     tracker.handleResponse("demo01", "response/buzzer", {
       request_id: req.requestId,
-      status: "failed",
-      error_code: "busy",
+      status: "error",
     });
-    expect(tracker.list()[0]!.state).toBe("failed");
+    expect(tracker.list()[0]!.state).toBe("error");
+  });
+
+  it("matches settings answers by setting_id; the ACK itself is the success", async () => {
+    const { tracker } = setup();
+    const set = {
+      ...req,
+      path: "settings/set/gps_settings",
+      responsePath: "settings/ack/gps_settings",
+    };
+    await tracker.start(set);
+    const ack = { timestamp: 2, action: "ack", setting_id: req.requestId, setting_type: "gps" };
+    expect(
+      tracker.handleResponse("demo01", "settings/ack/gps_settings", { ...ack, setting_id: "x" }),
+    ).toBe(false);
+    expect(tracker.handleResponse("demo01", "settings/ack/gps_settings", ack)).toBe(true);
+    expect(tracker.list()[0]!.state).toBe("success");
   });
 });

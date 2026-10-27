@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/device/settings/set/device_settings",
+  "description": "Published by the backend, QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "setting_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "setting_type": {
+      "type": "string",
+      "const": "device"
+    },
+    "action": {
+      "type": "string",
+      "const": "set"
+    },
+    "pwrkey_hold_timeout": {
+      "description": "seconds",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "speaker_enable": {
+      "type": "boolean"
+    },
+    "audio_volume": {
+      "description": "1..100",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "audio_sample_rate": {
+      "description": "milliseconds",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "display_enable": {
+      "type": "boolean"
+    },
+    "display_rotation": {
+      "description": "0 = portrait, 2 = portrait rotated 180°",
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "display_inverted": {
+      "description": "true = white on black",
+      "type": "boolean"
+    },
+    "display_timeout": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      ],
+      "description": "seconds"
+    },
+    "display_brightness": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      ],
+      "description": "1..100"
+    },
+    "geofence_alert_enable": {
+      "type": "boolean"
+    },
+    "motion_alert_enable": {
+      "type": "boolean"
+    },
+    "high_temp_alert_enable": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "timestamp",
+    "setting_id",
+    "setting_type",
+    "action"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "action": "set",
+      "setting_id": "set_1004",
+      "setting_type": "device",
+      "pwrkey_hold_timeout": "60",
+      "speaker_enable": "true",
+      "audio_volume": "60",
+      "audio_sample_rate": "60",
+      "display_enable": "true",
+      "display_rotation": "0",
+      "display_inverted": "false",
+      "display_timeout": "60",
+      "display_brightness": "60",
+      "geofence_alert_enable": "true",
+      "motion_alert_enable": "true",
+      "high_temp_alert_enable": "true"
+    }
+  ]
+}

@@ -29,20 +29,27 @@ export interface TrackerIO {
   random(): number;
 }
 
-/** `command/x` → `response/x`; `settings/{set,get}/s` → `settings/response/s` (spec §7, §8). */
+/**
+ * Live key of the collar's answer (spec V3 §5, §6): `command/x` → `response/x`,
+ * `settings/set/s` → `settings/ack/s`, `settings/get/s` → `settings/response/s`.
+ */
 export function responsePathFor(path: string): string | null {
-  const [kind, a, b] = path.split("/");
+  const [kind, a, b, extra] = path.split("/");
   if (kind === "command" && a && b === undefined) return `response/${a}`;
-  if (kind === "settings" && (a === "set" || a === "get") && b) return `settings/response/${b}`;
+  if (kind === "settings" && b && extra === undefined) {
+    if (a === "set") return `settings/ack/${b}`;
+    if (a === "get") return `settings/response/${b}`;
+  }
   return null;
 }
 
-const FINAL_FROM_RESPONSE = new Set<RequestState>(["success", "failed", "rejected", "unsupported"]);
+const FINAL_FROM_RESPONSE = new Set<RequestState>(["success", "error", "accepted", "rejected"]);
 
 /**
  * Tracks command/settings requests until the device answers (rule 3): ack timeout, retries
- * with the same request_id and backoff, then `timeout`. Responses are matched and deduped by
- * request_id (spec §7, rule 6): a second answer to a finished request changes nothing.
+ * with the same id and backoff, then `timeout`. Answers are matched and deduped by request_id
+ * (commands) or setting_id (settings, rule 6): a second answer to a finished request changes
+ * nothing.
  * Only in memory: a bridge restart forgets pending requests (persisting them is phase 8).
  */
 export class RequestTracker {
@@ -73,7 +80,7 @@ export class RequestTracker {
    * (also for duplicates), so the caller can log it as such.
    */
   handleResponse(deviceId: string, path: string, data: Record<string, unknown>): boolean {
-    const requestId = data.request_id;
+    const requestId = path.startsWith("settings/") ? data.setting_id : data.request_id;
     if (typeof requestId !== "string") return false;
     const req = this.requests.get(requestId);
     if (!req || req.deviceId !== deviceId || req.responsePath !== path) return false;
@@ -81,11 +88,14 @@ export class RequestTracker {
       this.io.onUpdate({ ...req }, "duplicate");
       return true;
     }
+    // Settings ACKs and GET responses carry no status: their arrival is the success.
     const status = data.status;
     req.state =
-      typeof status === "string" && FINAL_FROM_RESPONSE.has(status as RequestState)
-        ? (status as RequestState)
-        : "failed";
+      status === undefined
+        ? "success"
+        : typeof status === "string" && FINAL_FROM_RESPONSE.has(status as RequestState)
+          ? (status as RequestState)
+          : "error";
     req.response = JSON.stringify(data);
     req.updatedAt = this.io.now();
     this.clearTimer(requestId);
@@ -110,7 +120,7 @@ export class RequestTracker {
     try {
       await this.io.send(req);
     } catch (err) {
-      req.state = "error";
+      req.state = "failed";
       req.error = String(err instanceof Error ? err.message : err);
       this.io.onUpdate({ ...req }, event);
       return;

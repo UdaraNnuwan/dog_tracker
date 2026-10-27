@@ -2,7 +2,7 @@ import { isValidDeviceId } from "@udara/contracts";
 import type { Db } from "./supabase.js";
 
 /** History sections of the dashboard (ADR 0006). */
-export const HISTORY_KINDS = ["gps", "battery", "signal", "messages"] as const;
+export const HISTORY_KINDS = ["gps", "battery", "signal", "environment", "messages"] as const;
 export type HistoryKind = (typeof HISTORY_KINDS)[number];
 
 export const MESSAGE_CATEGORIES = [
@@ -66,7 +66,7 @@ export async function queryHistory(db: Db, q: HistoryQuery) {
     case "gps":
       return db
         .from("gps_points")
-        .select("ts, received_at, latitude, longitude, speed, accuracy, satellites")
+        .select("ts, received_at, latitude, longitude, speed")
         .eq("device_id", q.deviceId)
         .gte("ts", q.from)
         .lte("ts", q.to)
@@ -75,7 +75,7 @@ export async function queryHistory(db: Db, q: HistoryQuery) {
     case "battery":
       return db
         .from("battery_readings")
-        .select("ts, received_at, voltage, percentage, charging, temperature")
+        .select("ts, received_at, voltage, percentage, charging")
         .eq("device_id", q.deviceId)
         .gte("ts", q.from)
         .lte("ts", q.to)
@@ -84,7 +84,16 @@ export async function queryHistory(db: Db, q: HistoryQuery) {
     case "signal":
       return db
         .from("signal_readings")
-        .select("ts, received_at, rssi, rsrp, rsrq, sinr")
+        .select("ts, received_at, strength_lower_limit, strength_upper_limit")
+        .eq("device_id", q.deviceId)
+        .gte("ts", q.from)
+        .lte("ts", q.to)
+        .order("ts", { ascending: true })
+        .limit(q.limit);
+    case "environment":
+      return db
+        .from("environment_readings")
+        .select("ts, received_at, temperature, pressure, humidity")
         .eq("device_id", q.deviceId)
         .gte("ts", q.from)
         .lte("ts", q.to)

@@ -1,4 +1,4 @@
-offset_s,device_id,accelerometer.x,accelerometer.y,accelerometer.z,gyroscope.x,gyroscope.y,gyroscope.z
+offset_s,device_id,acceleration.x,acceleration.y,acceleration.z,gyroscope.x,gyroscope.y,gyroscope.z
 0,csvdog01,0.02,0.08,9.75,-0.8,-0.2,-0.5
 0,csvdog02,-0.52,0.12,10.19,-3.5,-4.9,0.1
 10,csvdog01,0.93,-0.89,10.51,-4.1,-7.0,-7.5

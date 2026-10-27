@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/backend/telemetry/bme_data",
+  "description": "Published by the collar, QoS 0, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "temperature": {
+      "type": "number",
+      "description": "degC"
+    },
+    "pressure": {
+      "type": "number",
+      "description": "hPa or kPa (unit not fixed by spec V3)"
+    },
+    "humidity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "%RH"
+    }
+  },
+  "required": [
+    "timestamp",
+    "temperature",
+    "pressure",
+    "humidity"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "temperature": 50,
+      "pressure": 79,
+      "humidity": 80
+    }
+  ]
+}

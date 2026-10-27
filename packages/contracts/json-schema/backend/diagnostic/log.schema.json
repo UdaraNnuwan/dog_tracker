@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/backend/{device_id}/diagnostic/log",
-  "description": "Publisher QoS 0, retain false.",
+  "title": "pettracker/{device_id}/backend/diagnostic/log",
+  "description": "Published by the collar, QoS 0, retain false.",
   "type": "object",
   "properties": {
     "timestamp": {
@@ -9,33 +9,22 @@
       "minimum": 0,
       "maximum": 99999999999
     },
-    "protocol_version": {
-      "type": "string"
-    },
-    "level": {
-      "type": "string"
-    },
-    "module": {
-      "type": "string"
-    },
     "error_type": {
       "type": "string"
     },
     "error_code": {
-      "type": "string"
-    },
-    "message": {
-      "type": "string"
+      "type": "string",
+      "description": "numeric or alphanumeric"
     }
   },
   "required": [
-    "timestamp"
+    "timestamp",
+    "error_type",
+    "error_code"
   ],
   "examples": [
     {
       "timestamp": 1717330000,
-      "level": "error",
-      "module": "storage",
       "error_type": "eeprom",
       "error_code": "400004"
     }

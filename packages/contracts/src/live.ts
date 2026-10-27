@@ -54,27 +54,29 @@ export interface DemoStatus {
 }
 
 /**
- * Lifecycle of one command/settings request (rule 3): `pending` until the device answers
- * with the same request_id, else `timeout` after the retries. Final device answers use the
- * response `status` (spec §3).
+ * Lifecycle of one command/settings request (rule 3): `pending` until the collar answers with
+ * the same request_id / setting_id, else `timeout` after the retries. A command's final state
+ * is the response `status` (`success` / `error`, or `accepted` / `rejected` for reboot); a
+ * settings SET succeeds on its ACK, a GET on its response. `failed` means we could not publish.
  */
 export const REQUEST_STATES = [
   "pending",
   "success",
-  "failed",
-  "rejected",
-  "unsupported",
-  "timeout",
   "error",
+  "accepted",
+  "rejected",
+  "timeout",
+  "failed",
 ] as const;
 export type RequestState = (typeof REQUEST_STATES)[number];
 
 export interface RequestStatus {
+  /** `request_id` of a command, `setting_id` of a settings request. */
   requestId: string;
   deviceId: string;
-  /** Path after `pettracker/device/{device_id}/`, e.g. `command/buzzer`. */
+  /** Path after `pettracker/{device_id}/device/`, e.g. `command/buzzer`. */
   path: string;
-  /** Path of the expected answer, e.g. `response/buzzer`. */
+  /** Live key of the expected answer, e.g. `response/buzzer` or `settings/ack/gps_settings`. */
   responsePath: string;
   /** JSON text exactly as published (the same on every retry). */
   payload: string;
@@ -86,7 +88,7 @@ export interface RequestStatus {
   updatedAt: number;
   /** JSON text of the device's (validated) answer, once it arrived. */
   response: string | null;
-  /** Why the request failed on our side (`error`), e.g. broker disconnected. */
+  /** Why the request failed on our side (`failed`), e.g. broker disconnected. */
   error: string | null;
 }
 
@@ -117,37 +119,91 @@ export type LiveEvent =
       receivedAt: number;
     };
 
-/** Topic key of a validated message (adds the setting name for settings responses). */
+/** Topic key of a validated message (adds the setting name for settings topics). */
 export function liveTopicKey(msg: InboundMessage): LiveTopicKey {
-  return msg.path === "settings/response" ? `${msg.path}/${msg.setting}` : msg.path;
+  return "setting" in msg ? `${msg.path}/${msg.setting}` : msg.path;
 }
 
-const RESPONSE_FIELDS = ["timestamp", "request_id", "status", "error_code", "message"] as const;
+const RESPONSE_FIELDS = ["timestamp", "request_id", "status"] as const;
+const SETTINGS_FIELDS = ["timestamp", "action", "setting_id", "setting_type"] as const;
+
+const settings = (name: string, fields: readonly string[]) => ({
+  [`settings/response/${name}`]: [...SETTINGS_FIELDS, ...fields],
+  [`settings/ack/${name}`]: SETTINGS_FIELDS,
+});
 
 /**
- * Payload fields of every subscribed topic (without `protocol_version`), so the UI can show
- * a tile for each topic before any data arrived. Zod-free on purpose (small main bundle);
- * a contracts test keeps it equal to the schemas.
+ * Payload fields of every topic the bridge receives, so the UI can show a tile for each topic
+ * before any data arrived. Zod-free on purpose (small main bundle); a contracts test keeps it
+ * equal to the schemas.
  */
 export const TOPIC_FIELDS: Readonly<Record<LiveTopicKey, readonly string[]>> = {
-  "telemetry/gps": ["timestamp", "latitude", "longitude", "speed", "accuracy", "satellites"],
-  "telemetry/battery": ["timestamp", "voltage", "percentage", "charging", "temperature"],
-  "telemetry/imu": ["timestamp", "accelerometer", "gyroscope"],
-  "telemetry/signal_strength": ["timestamp", "rssi", "rsrp", "rsrq", "sinr"],
-  "status/system": ["timestamp", "firmware_version", "uptime", "free_memory", "reset_reason"],
-  "status/network": ["timestamp", "connected", "network_type", "operator", "ip_address"],
+  "telemetry/gps": ["timestamp", "latitude", "longitude", "speed"],
+  "telemetry/battery": ["timestamp", "voltage", "percentage", "charging"],
+  "telemetry/imu": ["timestamp", "acceleration", "gyroscope"],
+  "telemetry/signal_strength": ["timestamp", "strength_lower_limit", "strength_upper_limit"],
+  "telemetry/bme_data": ["timestamp", "temperature", "pressure", "humidity"],
+  "status/system": [
+    "timestamp",
+    "firmware_version",
+    "uptime_seconds",
+    "free_heap_bytes",
+    "reset_reason",
+    "device_state",
+  ],
+  "status/network": ["timestamp", "connection", "registration", "operator", "apn", "ip_address"],
   "status/connectivity": ["timestamp", "status"],
-  "event/geofence": ["timestamp", "geofence_id", "event", "latitude", "longitude"],
-  "event/low_battery": ["timestamp", "percentage", "voltage"],
-  "event/tamper": ["timestamp", "detected"],
-  "response/location": [...RESPONSE_FIELDS, "latitude", "longitude"],
-  "response/buzzer": RESPONSE_FIELDS,
+  "event/geofence": ["timestamp", "in_status", "out_status"],
+  "event/low_battery": ["timestamp", "percentage", "voltage", "threshold_percentage", "charging"],
+  "response/config": [...RESPONSE_FIELDS, "applied"],
+  "response/location": [...RESPONSE_FIELDS, "location"],
+  "response/buzzer": [...RESPONSE_FIELDS, "enabled", "duration_ms"],
   "response/reboot": RESPONSE_FIELDS,
-  "response/peripheral": RESPONSE_FIELDS,
-  "response/sleep": RESPONSE_FIELDS,
-  "settings/response/gps_interval": [...RESPONSE_FIELDS, "value"],
-  "diagnostic/log": ["timestamp", "level", "module", "error_type", "error_code", "message"],
-  "diagnostic/crash": ["timestamp"],
-  "diagnostic/debug_log": ["timestamp"],
-  "diagnostic/sensor_health": ["timestamp"],
+  "response/peripheral": [...RESPONSE_FIELDS, "peripheral", "enabled"],
+  "response/sleep": [...RESPONSE_FIELDS, "action", "duration_seconds"],
+  ...settings("network_settings", [
+    "mqtt_hb_interval",
+    "mqtt_retry_interval",
+    "telemetry_interval",
+  ]),
+  ...settings("gps_settings", ["gps_interval", "gps_enabled"]),
+  ...settings("profile_settings", [
+    "pet_name",
+    "owner_qr",
+    "vaccination_status",
+    "next_vacc_due",
+    "vaccines",
+  ]),
+  ...settings("power_settings", [
+    "power_mode",
+    "low_bat_thresh",
+    "low_bat_alert_enable",
+    "inactive_timeout",
+    "display_timeout",
+    "display_brightness",
+  ]),
+  ...settings("sensor_settings", [
+    "imu_enable",
+    "imu_sample_rate",
+    "imu_sleep_detect_timeout",
+    "imu_detach_detect_timeout",
+    "bme_enable",
+    "temp_max_value",
+  ]),
+  ...settings("device_settings", [
+    "pwrkey_hold_timeout",
+    "speaker_enable",
+    "audio_volume",
+    "audio_sample_rate",
+    "display_enable",
+    "display_rotation",
+    "display_inverted",
+    "display_timeout",
+    "display_brightness",
+    "geofence_alert_enable",
+    "motion_alert_enable",
+    "high_temp_alert_enable",
+  ]),
+  "diagnostic/log": ["timestamp", "error_type", "error_code"],
+  "diagnostic/debug_log": ["timestamp", "level", "module", "message"],
 };

@@ -39,7 +39,7 @@ export function DeviceView() {
   );
   // Every subscribed topic gets a tab, data or not.
   const allTopics = useMemo(
-    () => catalogue.filter((d) => d.direction === "backend").map((d) => d.path),
+    () => catalogue.filter((d) => d.publisher === "collar").map((d) => d.path),
     [catalogue],
   );
   const devices = useMemo(() => sortDevices(Object.values(model.devices)), [model.devices]);

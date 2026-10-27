@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/backend/{device_id}/diagnostic/debug_log",
-  "description": "Publisher QoS 0, retain false.",
+  "title": "pettracker/{device_id}/backend/diagnostic/debug_log",
+  "description": "Published by the collar, QoS 0, retain false.",
   "type": "object",
   "properties": {
     "timestamp": {
@@ -9,12 +9,34 @@
       "minimum": 0,
       "maximum": 99999999999
     },
-    "protocol_version": {
+    "level": {
+      "type": "string",
+      "enum": [
+        "debug",
+        "info",
+        "warn",
+        "error"
+      ]
+    },
+    "module": {
+      "type": "string"
+    },
+    "message": {
       "type": "string"
     }
   },
   "required": [
-    "timestamp"
+    "timestamp",
+    "level",
+    "module",
+    "message"
   ],
-  "additionalProperties": {}
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "level": "info",
+      "module": "gps",
+      "message": "GNSS fix acquired"
+    }
+  ]
 }

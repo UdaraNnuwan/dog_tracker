@@ -1,2 +1,2 @@
-offset_s,device_id,geofence_id:string,event
-8,csvbad01,home,left
+offset_s,device_id,in_status,out_status
+8,csvbad01,left,false

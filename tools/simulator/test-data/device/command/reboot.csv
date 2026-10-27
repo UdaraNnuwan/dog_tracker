@@ -1,2 +1,2 @@
-offset_s,device_id,request_id:string
-540,csvdog01,req_1005
+offset_s,device_id,request_id:string,reboot_enable
+540,csvdog01,REQ_1005,true

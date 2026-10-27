@@ -8,12 +8,14 @@ export type DeviceRow = Tables<"devices">;
 export type GpsRow = Omit<Tables<"gps_points">, "device_id">;
 export type BatteryRow = Omit<Tables<"battery_readings">, "device_id">;
 export type SignalRow = Omit<Tables<"signal_readings">, "device_id">;
+export type EnvironmentRow = Omit<Tables<"environment_readings">, "device_id">;
 export type MessageRow = Omit<Tables<"device_messages">, "device_id" | "dedupe_key">;
 
 export interface HistoryRows {
   gps: GpsRow;
   battery: BatteryRow;
   signal: SignalRow;
+  environment: EnvironmentRow;
   messages: MessageRow;
 }
 export type HistoryKind = keyof HistoryRows;
@@ -154,9 +156,9 @@ const postJson = <T>(path: string, body: unknown) =>
 const devicePath = (deviceId: string) => `/api/devices/${encodeURIComponent(deviceId)}`;
 
 /**
- * Publishes `pettracker/device/{id}/{path}` for a command or settings path, e.g.
- * `command/buzzer` or `settings/set/gps_interval`. The backend adds timestamp, request_id
- * (UUID) and protocol_version, validates, and tracks the answer (rule 3).
+ * Publishes `pettracker/{id}/device/{path}` for a command or settings path, e.g.
+ * `command/buzzer` or `settings/set/gps_settings`. The backend adds the timestamp and a UUID
+ * request_id / setting_id, validates, and tracks the answer (rule 3).
  */
 export function sendToDevice(
   deviceId: string,

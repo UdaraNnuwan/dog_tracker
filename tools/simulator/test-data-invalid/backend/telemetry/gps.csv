@@ -1,3 +1,4 @@
-offset_s,device_id,latitude,longitude,timestamp
-0,csvbad01,91.5,79.86,
-2,csvbad01,6.92,79.86,1792380000000
+offset_s,device_id,latitude,longitude,speed,timestamp
+0,csvbad01,91.5,79.86,0,
+2,csvbad01,6.92,79.86,0,1792380000000
+3,csvbad01,6.92,79.86,,

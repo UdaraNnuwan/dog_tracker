@@ -1,3 +1,0 @@
-offset_s,device_id,request_id:string,value
-200,csvdog01,req_2001,45
-260,csvdog02,req_2002,60

@@ -3,6 +3,7 @@ import { ApiError, fetchDevices, type DeviceRow, type Range } from "../api.js";
 import {
   BatterySection,
   DataSection,
+  EnvironmentSection,
   LocationSection,
   MessagesSection,
   SignalSection,
@@ -18,7 +19,8 @@ const PRESETS = [
 
 const SECTIONS = [
   { id: "location", label: "Location" },
-  { id: "battery", label: "Battery & temperature" },
+  { id: "battery", label: "Battery" },
+  { id: "environment", label: "Temperature & humidity" },
   { id: "signal", label: "Signal" },
   { id: "messages", label: "Events & status" },
   { id: "data", label: "Data" },
@@ -158,6 +160,8 @@ export function HistoryView() {
           <LocationSection deviceId={deviceId} range={range} />
         ) : section === "battery" ? (
           <BatterySection deviceId={deviceId} range={range} />
+        ) : section === "environment" ? (
+          <EnvironmentSection deviceId={deviceId} range={range} />
         ) : section === "signal" ? (
           <SignalSection deviceId={deviceId} range={range} />
         ) : (

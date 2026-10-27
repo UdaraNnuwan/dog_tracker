@@ -1,2 +1,2 @@
-offset_s,device_id,request_id:string,status
-122,csvdog01,req_1002,success
+offset_s,device_id,request_id:string,status,enabled,duration_ms
+122,csvdog01,REQ_1002,success,true,1500

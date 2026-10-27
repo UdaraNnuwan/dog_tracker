@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/device/command/config",
+  "description": "Published by the backend, QoS 1, retain false. TBD in spec V3 (pilot phase).",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "config": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "timestamp",
+    "request_id",
+    "config"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "request_id": "REQ_1003",
+      "config": {
+        "tracking_enabled": true,
+        "report_interval_seconds": 30
+      }
+    }
+  ]
+}

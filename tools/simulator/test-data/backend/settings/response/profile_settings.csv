@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type,pet_name,owner_qr,vaccination_status,next_vacc_due,vaccines:json
+282,csvdog01,get_response,set_3003,profile,shadow,https://example.com/owner/shadow,1,2027-01-01,"[{""name"":""rabies"",""date"":""2028-01-01"",""completed"":true}]"

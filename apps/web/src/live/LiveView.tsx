@@ -213,6 +213,7 @@ function Summary({ device, now }: { device: DeviceView | null; now: number }) {
   const gps = latest["telemetry/gps"];
   const pos = asPayload(gps?.data);
   const battery = asPayload(latest["telemetry/battery"]?.data);
+  const bme = asPayload(latest["telemetry/bme_data"]?.data);
   const signal = asPayload(latest["telemetry/signal_strength"]?.data);
   const geofence = asPayload(latest["event/geofence"]?.data);
   const num = (v: unknown) => (typeof v === "number" ? v : null);
@@ -220,9 +221,10 @@ function Summary({ device, now }: { device: DeviceView | null; now: number }) {
   const lat = num(pos.latitude);
   const lon = num(pos.longitude);
   const speed = num(pos.speed);
-  const temperature = num(battery.temperature);
+  const temperature = num(bme.temperature);
   const percent = num(battery.percentage);
-  const rssi = num(signal.rssi);
+  const lower = num(signal.strength_lower_limit);
+  const upper = num(signal.strength_upper_limit);
 
   return (
     <dl className="summary">
@@ -262,13 +264,15 @@ function Summary({ device, now }: { device: DeviceView | null; now: number }) {
       </div>
       <div>
         <dt>Signal</dt>
-        <dd>{rssi !== null ? `${rssi} dBm` : "—"}</dd>
+        <dd>{lower !== null && upper !== null ? `${lower}–${upper}` : "—"}</dd>
       </div>
       <div>
         <dt>Geofence</dt>
         <dd>
-          {typeof geofence.event === "string"
-            ? `${geofence.event} ${typeof geofence.geofence_id === "string" ? geofence.geofence_id : ""}`
+          {typeof geofence.out_status === "boolean"
+            ? geofence.out_status
+              ? "outside"
+              : "inside"
             : "—"}
         </dd>
       </div>

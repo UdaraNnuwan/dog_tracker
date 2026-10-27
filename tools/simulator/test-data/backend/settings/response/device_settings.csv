@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type,speaker_enable,audio_volume,display_rotation,display_inverted,display_brightness,geofence_alert_enable
+312,csvdog02,get_response,set_3006,device,true,60,0,false,70,true

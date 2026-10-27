@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/backend/{device_id}/telemetry/imu",
-  "description": "Publisher QoS 0, retain false.",
+  "title": "pettracker/{device_id}/backend/telemetry/imu",
+  "description": "Published by the collar, QoS 0, retain false.",
   "type": "object",
   "properties": {
     "timestamp": {
@@ -9,10 +9,7 @@
       "minimum": 0,
       "maximum": 99999999999
     },
-    "protocol_version": {
-      "type": "string"
-    },
-    "accelerometer": {
+    "acceleration": {
       "type": "object",
       "properties": {
         "x": {
@@ -55,21 +52,21 @@
   },
   "required": [
     "timestamp",
-    "accelerometer",
+    "acceleration",
     "gyroscope"
   ],
   "examples": [
     {
       "timestamp": 1717330000,
-      "accelerometer": {
-        "x": 0.12,
-        "y": -0.03,
-        "z": 9.78
+      "acceleration": {
+        "x": 0.02,
+        "y": -0.1,
+        "z": 9.79
       },
       "gyroscope": {
-        "x": 0.4,
-        "y": -0.2,
-        "z": 0.1
+        "x": 0.3,
+        "y": -0.1,
+        "z": 0
       }
     }
   ]

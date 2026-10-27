@@ -1,7 +1,7 @@
 /**
  * Replays CSV test data to MQTT, one file per topic: `pnpm replay --help` (ADR 0007).
  * Files live under `test-data/{backend|device}/<topic path>.csv`, e.g.
- * `test-data/backend/telemetry/gps.csv` → `pettracker/backend/{device_id}/telemetry/gps`.
+ * `test-data/backend/telemetry/gps.csv` → `pettracker/{device_id}/backend/telemetry/gps`.
  */
 import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
@@ -11,7 +11,7 @@ import { parseArgs } from "node:util";
 import mqtt from "mqtt";
 import { isValidDeviceId } from "@udara/contracts";
 import { parseReplayFile, type ReplayRow } from "./csv.js";
-import { topicFromFile, validatePayload, type TopicSpec } from "./topics.js";
+import { isCollarTopic, topicFromFile, validatePayload, type TopicSpec } from "./topics.js";
 
 const DEFAULT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "test-data");
 
@@ -67,14 +67,18 @@ async function load(dir: string, only: string[], device: string | null): Promise
 }
 
 /**
- * Adds what a real sender adds: a device timestamp and, for commands, a request_id.
+ * Adds what a real sender adds: a device timestamp and, for what the backend publishes, a
+ * request_id (commands) or setting_id (settings SET/GET).
  * The timestamp follows the CSV timeline (`base + offset_s`), not the wall clock, so a sped-up
  * replay keeps rows seconds apart instead of collapsing them onto the same second.
  */
 function finalise(s: Scheduled, baseS: number): Record<string, unknown> {
   const payload = { ...s.row.payload };
   payload.timestamp ??= Math.floor(baseS + s.row.offsetS);
-  if (s.spec.direction === "device") payload.request_id ??= randomUUID();
+  if (!isCollarTopic(s.spec)) {
+    if (s.spec.path.startsWith("settings/")) payload.setting_id ??= randomUUID();
+    else payload.request_id ??= randomUUID();
+  }
   return payload;
 }
 
@@ -168,7 +172,7 @@ async function main() {
               values["skip-invalid"] &&
               validatePayload(item.spec, item.row.deviceId!, payload).length > 0;
             if (!skip) {
-              const topic = `pettracker/${item.spec.direction}/${item.row.deviceId}/${item.spec.path}`;
+              const topic = `pettracker/${item.row.deviceId}/${item.spec.direction}/${item.spec.path}`;
               client.publish(topic, JSON.stringify(payload), {
                 qos: item.spec.qos,
                 retain: item.spec.retain,

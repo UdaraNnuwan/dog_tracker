@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type,gps_interval
+10,csvbad01,set,set_9001,gps,-5

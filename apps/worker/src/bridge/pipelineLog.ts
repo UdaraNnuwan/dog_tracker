@@ -52,19 +52,31 @@ export function rawPayload(payload: Uint8Array | string): {
 function summary(msg: InboundMessage): string {
   switch (msg.path) {
     case "telemetry/gps":
-      return `${msg.data.latitude.toFixed(5)}, ${msg.data.longitude.toFixed(5)}${
-        msg.data.speed !== undefined ? ` · ${(msg.data.speed * 3.6).toFixed(1)} km/h` : ""
-      }`;
+      return `${msg.data.latitude.toFixed(5)}, ${msg.data.longitude.toFixed(5)} · ${(
+        msg.data.speed * 3.6
+      ).toFixed(1)} km/h`;
     case "telemetry/battery":
       return `${msg.data.percentage}% · ${msg.data.voltage} V${msg.data.charging ? " · charging" : ""}`;
     case "telemetry/signal_strength":
-      return msg.data.rssi !== undefined ? `rssi ${msg.data.rssi} dBm` : "";
+      return `${msg.data.strength_lower_limit}–${msg.data.strength_upper_limit}`;
+    case "telemetry/bme_data":
+      return `${msg.data.temperature} °C · ${msg.data.humidity}% RH`;
+    case "status/system":
+      return `${msg.data.firmware_version} · ${msg.data.device_state}`;
     case "status/connectivity":
       return msg.data.status;
     case "event/geofence":
-      return `${msg.data.event} ${msg.data.geofence_id}`;
+      return msg.data.out_status ? "left the geofence" : "inside the geofence";
     case "event/low_battery":
-      return `${msg.data.percentage}%`;
+      return `${msg.data.percentage}% (threshold ${msg.data.threshold_percentage}%)`;
+    case "diagnostic/log":
+      return `${msg.data.error_type} ${msg.data.error_code}`;
+    case "diagnostic/debug_log":
+      return `${msg.data.module}: ${msg.data.message}`;
+    case "settings/ack":
+      return "ack";
+    case "settings/response":
+      return "settings reported";
     default: {
       const status = (msg.data as { status?: unknown }).status;
       return typeof status === "string" ? status : "";
@@ -75,25 +87,19 @@ function summary(msg: InboundMessage): string {
 /** Events worth a warning (or error) in the log, independent of storage. */
 function levelOf(msg: InboundMessage): PipelineLogLevel {
   switch (msg.path) {
-    case "event/tamper":
-      return "error";
     case "event/geofence":
-      return msg.data.event === "exit" ? "warn" : "info";
+      return msg.data.out_status ? "warn" : "info";
     case "event/low_battery":
       return "warn";
     case "status/connectivity":
       return msg.data.status === "offline" ? "warn" : "info";
-    case "diagnostic/crash":
-      return "error";
     case "diagnostic/log":
-      return msg.data.level === "error"
-        ? "error"
-        : msg.data.level === "warn" || msg.data.level === "warning"
-          ? "warn"
-          : "info";
+      return "error";
+    case "diagnostic/debug_log":
+      return msg.data.level;
     default: {
       const status = (msg.data as { status?: unknown }).status;
-      return status === "failed" ? "warn" : "info";
+      return status === "error" || status === "rejected" ? "warn" : "info";
     }
   }
 }

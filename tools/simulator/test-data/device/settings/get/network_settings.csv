@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type
+260,csvdog01,get,set_3001,network

@@ -1,0 +1,2 @@
+offset_s,device_id,firmware_version:string,uptime_seconds,device_state
+14,csvbad01,v1,10,off

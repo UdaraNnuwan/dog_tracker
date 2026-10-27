@@ -9,10 +9,13 @@ const MAX_PINS = 50;
 /** Device time of a row (payload `timestamp`), else when it was received. */
 const timeOf = (r: TopicEntry) => (typeof r.data.timestamp === "number" ? r.data.timestamp : r.at);
 
-const latLon = (r: TopicEntry) =>
-  typeof r.data.latitude === "number" && typeof r.data.longitude === "number"
-    ? { latitude: r.data.latitude, longitude: r.data.longitude }
+/** A fix at the top level (GPS) or under `location` (spec V3 §5 location response). */
+function latLon(r: TopicEntry) {
+  const loc = (r.data.location ?? r.data) as Record<string, unknown> | null;
+  return loc && typeof loc.latitude === "number" && typeof loc.longitude === "number"
+    ? { latitude: loc.latitude, longitude: loc.longitude }
     : null;
+}
 
 /** The device's GPS fix closest in time to `t`, within MAX_GAP_S. */
 function nearestFix(gps: TopicEntry[], deviceId: string | null, t: number) {
@@ -32,8 +35,8 @@ function nearestFix(gps: TopicEntry[], deviceId: string | null, t: number) {
 
 /**
  * Map pins for a topic's rows, newest first: `response/location` fixes and geofence events.
- * Geofence events may omit their position (optional in spec §6.3); those are placed at the
- * device's nearest GPS fix and marked "≈".
+ * Geofence events carry no position (spec V3 §3); they are placed at the device's nearest
+ * GPS fix and marked "≈".
  */
 export function pinsFor(
   key: string,
@@ -54,7 +57,9 @@ export function pinsFor(
     if (!pos) continue;
     const what =
       key === "event/geofence"
-        ? `${String(r.data.event)} ${String(r.data.geofence_id)}`
+        ? r.data.out_status === true
+          ? "left the geofence"
+          : "inside the geofence"
         : "location fix";
     pins.push({
       ...pos,

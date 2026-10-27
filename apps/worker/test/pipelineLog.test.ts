@@ -7,7 +7,7 @@ import {
   rawPayload,
 } from "../src/bridge/pipelineLog.js";
 
-const T = "pettracker/backend/dog001";
+const T = "pettracker/dog001/backend";
 const parse = (path: string, body: object | string) =>
   parseInbound(`${T}/${path}`, typeof body === "string" ? body : JSON.stringify(body));
 
@@ -35,21 +35,24 @@ describe("describeInbound", () => {
   it("logs raw IMU at debug (live only)", () => {
     const r = parse("telemetry/imu", {
       timestamp: 1,
-      accelerometer: { x: 0, y: 0, z: 9.8 },
+      acceleration: { x: 0, y: 0, z: 9.8 },
       gyroscope: { x: 0, y: 0, z: 0 },
     });
     expect(describeInbound(`${T}/telemetry/imu`, r, "live_only", "{}").level).toBe("debug");
   });
 
   it("raises events to warn/error", () => {
-    const exit = parse("event/geofence", { timestamp: 1, geofence_id: "home", event: "exit" });
-    const tamper = parse("event/tamper", { timestamp: 1, detected: true });
+    const exit = parse("event/geofence", { timestamp: 1, in_status: false, out_status: true });
+    const log = parse("diagnostic/log", { timestamp: 1, error_type: "eeprom", error_code: "4" });
     const offline = parse("status/connectivity", { status: "offline" });
     expect(describeInbound("t", exit, "stored", "{}")).toMatchObject({
       level: "warn",
-      message: "exit home · saved to history",
+      message: "left the geofence · saved to history",
     });
-    expect(describeInbound("t", tamper, "stored", "{}").level).toBe("error");
+    expect(describeInbound("t", log, "stored", "{}")).toMatchObject({
+      level: "error",
+      message: "eeprom 4 · saved to history",
+    });
     expect(describeInbound("t", offline, "retained", "{}")).toMatchObject({
       level: "warn",
       message: "offline · retained replay: state only",

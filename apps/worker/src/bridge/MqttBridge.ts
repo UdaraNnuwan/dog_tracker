@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import {
-  INGEST_SUBSCRIPTION,
+  INGEST_SUBSCRIPTIONS,
   deviceTopic,
   isPublishableDeviceTopic,
   liveTopicKey,
@@ -70,7 +70,8 @@ const nowSeconds = () => Math.floor(Date.now() / 1000);
 
 /**
  * The only MQTT client in the system. Holds one outbound WebSocket to HiveMQ Cloud,
- * subscribes to `pettracker/backend/#` and is the only place that publishes.
+ * subscribes to `pettracker/+/backend/#` and the collars' settings ACKs
+ * (`pettracker/+/device/settings/ack/+`, ADR 0011) and is the only place that publishes.
  *
  * Inbound messages are validated against `@udara/contracts`, summarised per tick, fanned
  * out to browsers on `/api/live` (WebSocket Hibernation API, ADR 0004) and batched into
@@ -198,8 +199,8 @@ export class MqttBridge extends DurableObject<Env> {
 
   /**
    * Publishes a command or settings request built and validated by the Worker (with a
-   * backend-generated UUID request_id) and tracks it until the device answers, retrying with
-   * the same request_id. Demo collars get it directly; everything else goes over MQTT.
+   * backend-generated UUID request_id / setting_id) and tracks it until the device answers,
+   * retrying with the same id. Demo collars get it directly; everything else goes over MQTT.
    */
   async sendRequest(input: Omit<NewRequest, "responsePath">): Promise<RequestStatus> {
     const responsePath = responsePathFor(input.path);
@@ -236,7 +237,7 @@ export class MqttBridge extends DurableObject<Env> {
           },
         }),
       );
-    if (req.state === "error") {
+    if (req.state === "failed") {
       line("error", `not sent: ${req.error ?? "unknown error"}`, req.payload);
       return;
     }
@@ -249,17 +250,17 @@ export class MqttBridge extends DurableObject<Env> {
         );
         break;
       case "retry":
-        line(
-          "warn",
-          `no answer in 10 s, retry ${req.attempts}/${total} (same request_id)`,
-          req.payload,
-        );
+        line("warn", `no answer in 10 s, retry ${req.attempts}/${total} (same id)`, req.payload);
         break;
       case "timeout":
         line("error", `timeout: no answer after ${req.attempts} attempts`, req.payload);
         break;
       case "response":
-        line(req.state === "success" ? "info" : "warn", `answered: ${req.state}`, req.response);
+        line(
+          req.state === "success" || req.state === "accepted" ? "info" : "warn",
+          `answered: ${req.state}`,
+          req.response,
+        );
         break;
       case "duplicate":
         line("info", "duplicate answer ignored (rule 6)", req.response);
@@ -331,7 +332,7 @@ export class MqttBridge extends DurableObject<Env> {
     if (result.ok) {
       const msg = result.value;
       const key = liveTopicKey(msg);
-      if (key.startsWith("response/") || key.startsWith("settings/response/")) {
+      if (key.startsWith("response/") || key.startsWith("settings/")) {
         this.requests.handleResponse(msg.deviceId, key, msg.data);
       }
     }
@@ -474,7 +475,7 @@ export class MqttBridge extends DurableObject<Env> {
         ...(cfg.password !== undefined ? { password: cfg.password } : {}),
         keepAliveSeconds: cfg.keepAliveSeconds,
         cleanSession: false,
-        subscriptions: [{ filter: INGEST_SUBSCRIPTION, qos: 1 }],
+        subscriptions: INGEST_SUBSCRIPTIONS.map((filter) => ({ filter, qos: 1 as const })),
         maxPacketBytes: MAX_INBOUND_PACKET_BYTES,
         now: Date.now,
         log,

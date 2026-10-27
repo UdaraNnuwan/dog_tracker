@@ -1,17 +1,22 @@
 import type { z } from "zod";
 import { INBOUND_TOPICS, type InboundTopicPath } from "./catalogue.js";
-import { settingsResponse } from "./schemas/inbound.js";
+import { settingsAck, settingsResponse } from "./schemas/inbound.js";
 import { isSettingName, type SettingName } from "./settings.js";
-import { BACKEND_PREFIX, isValidDeviceId } from "./topics.js";
+import { BACKEND, DEVICE, isValidDeviceId, splitTopic } from "./topics.js";
 
 /** Payloads above this are rejected before JSON parsing (rule 4). */
 export const MAX_INBOUND_PAYLOAD_BYTES = 16 * 1024;
 
-const SETTINGS_RESPONSE_PREFIX = "settings/response/";
+/** Settings topics the bridge receives: answers to GET (backend) and ACKs to SET (device). */
+const SETTINGS_INBOUND = {
+  "settings/response": { publisher: BACKEND, schema: settingsResponse },
+  "settings/ack": { publisher: DEVICE, schema: settingsAck },
+} as const;
+type SettingsInboundPath = keyof typeof SETTINGS_INBOUND;
 
 export type InboundTopic =
   | { deviceId: string; path: InboundTopicPath }
-  | { deviceId: string; path: "settings/response"; setting: SettingName };
+  | { deviceId: string; path: SettingsInboundPath; setting: SettingName };
 
 /** A validated inbound message. `data` is typed by `path` (and `setting`). */
 export type InboundMessage =
@@ -28,6 +33,14 @@ export type InboundMessage =
         path: "settings/response";
         setting: S;
         data: z.infer<ReturnType<typeof settingsResponse<S>>>;
+      };
+    }[SettingName]
+  | {
+      [S in SettingName]: {
+        deviceId: string;
+        path: "settings/ack";
+        setting: S;
+        data: z.infer<ReturnType<typeof settingsAck<S>>>;
       };
     }[SettingName];
 
@@ -56,23 +69,27 @@ const reject = (
   extra: Omit<Rejection, "reason" | "issues"> & { issues?: string[] } = {},
 ): { ok: false } & Rejection => ({ ok: false, reason, issues: [], ...extra });
 
-/** Parse `pettracker/backend/{device_id}/{path}` against the catalogue. */
+/**
+ * Parse `pettracker/{device_id}/backend/{path}` (and the collar's
+ * `pettracker/{device_id}/device/settings/ack/{setting}`) against the catalogue.
+ */
 export function parseBackendTopic(topic: string): ParseResult<InboundTopic> {
-  if (!topic.startsWith(BACKEND_PREFIX)) return reject("outside_namespace");
-  const rest = topic.slice(BACKEND_PREFIX.length);
-  const slash = rest.indexOf("/");
-  const deviceId = slash < 0 ? rest : rest.slice(0, slash);
-  const path = slash < 0 ? "" : rest.slice(slash + 1);
+  const t = splitTopic(topic);
+  if (!t || (t.publisher !== BACKEND && t.publisher !== DEVICE)) return reject("outside_namespace");
+  const { deviceId, publisher, path } = t;
   if (!isValidDeviceId(deviceId)) return reject("invalid_device_id", { path });
 
-  if (Object.hasOwn(INBOUND_TOPICS, path)) {
+  if (publisher === BACKEND && Object.hasOwn(INBOUND_TOPICS, path)) {
     return { ok: true, value: { deviceId, path: path as InboundTopicPath } };
   }
-  if (path.startsWith(SETTINGS_RESPONSE_PREFIX)) {
-    const setting = path.slice(SETTINGS_RESPONSE_PREFIX.length);
+  for (const [prefix, e] of Object.entries(SETTINGS_INBOUND)) {
+    if (publisher !== e.publisher || !path.startsWith(`${prefix}/`)) continue;
+    const setting = path.slice(prefix.length + 1);
     if (!isSettingName(setting)) return reject("unknown_setting", { deviceId, path });
-    return { ok: true, value: { deviceId, path: "settings/response", setting } };
+    return { ok: true, value: { deviceId, path: prefix as SettingsInboundPath, setting } };
   }
+  // Commands and SET/GET are the backend's own messages, not something it ingests.
+  if (publisher === DEVICE) return reject("outside_namespace", { deviceId, path });
   return reject("unknown_topic", { deviceId, path });
 }
 
@@ -103,7 +120,8 @@ export function parseInbound(
     return reject("invalid_json", { ...where, issues: [String(err)] });
   }
 
-  const schema = "setting" in t ? settingsResponse(t.setting) : INBOUND_TOPICS[t.path].schema;
+  const schema =
+    "setting" in t ? SETTINGS_INBOUND[t.path].schema(t.setting) : INBOUND_TOPICS[t.path].schema;
   const result = schema.safeParse(json);
   if (!result.success)
     return reject("invalid_payload", { ...where, issues: formatIssues(result.error) });

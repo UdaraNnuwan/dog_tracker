@@ -29,11 +29,11 @@ const OTHER = "__other";
 export const STATE_CLASS: Record<RequestStatus["state"], string> = {
   pending: "warn",
   success: "ok",
-  failed: "offline",
-  rejected: "offline",
-  unsupported: "offline",
-  timeout: "offline",
+  accepted: "ok",
   error: "offline",
+  rejected: "offline",
+  timeout: "offline",
+  failed: "offline",
 };
 
 /**
@@ -65,7 +65,7 @@ export function SendModal({ doc, devices, initialDevice, requests, onClose }: Pr
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const preview = previewPayload(toFields(fields, values).fields);
+  const preview = previewPayload(doc.path, toFields(fields, values).fields);
   const status = (sentId && requests[sentId]) || firstStatus;
 
   const submit = () => {

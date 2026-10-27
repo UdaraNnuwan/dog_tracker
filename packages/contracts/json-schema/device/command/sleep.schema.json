@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/device/{device_id}/command/sleep",
-  "description": "Publisher QoS 1, retain false.",
+  "title": "pettracker/{device_id}/device/command/sleep",
+  "description": "Published by the backend, QoS 1, retain false. TBD in spec V3 (pilot phase).",
   "type": "object",
   "properties": {
     "timestamp": {
@@ -9,29 +9,36 @@
       "minimum": 0,
       "maximum": 99999999999
     },
-    "protocol_version": {
-      "type": "string"
-    },
     "request_id": {
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
-    "mode": {
+    "action": {
+      "default": "enter_sleep",
       "type": "string",
-      "minLength": 1
+      "const": "enter_sleep"
+    },
+    "duration_seconds": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991,
+      "description": "s"
     }
   },
   "required": [
     "timestamp",
     "request_id",
-    "mode"
+    "action",
+    "duration_seconds"
   ],
+  "additionalProperties": false,
   "examples": [
     {
       "timestamp": 1717330000,
-      "request_id": "req_1006",
-      "mode": "deep"
+      "request_id": "REQ_1003",
+      "action": "enter_sleep",
+      "duration_seconds": 600
     }
   ]
 }

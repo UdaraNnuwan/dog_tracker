@@ -1,2 +1,2 @@
-offset_s,device_id,request_id:string,status
-182,csvdog02,req_1003,success
+offset_s,device_id,request_id:string,status,peripheral,enabled
+182,csvdog02,REQ_1003,success,speaker,false

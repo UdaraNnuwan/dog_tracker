@@ -1,35 +1,58 @@
 import { z } from "zod";
 import { SETTINGS, type SettingName } from "../settings.js";
-import { commandEnvelope, nonNegative } from "./common.js";
+import { commandEnvelope, percentage, positiveInt } from "./common.js";
+import { settingsEnvelope } from "./inbound.js";
 
 /**
- * Payloads the backend publishes under `pettracker/device/{device_id}/…` (spec §7, §8).
- * OTA (`command/firmware_update`, §14) is a proposal and deliberately absent.
+ * Payloads the backend publishes under `pettracker/{device_id}/device/…` (spec V3 §4, §6).
+ * OTA (`command/firmware_update`) is a proposal and deliberately absent.
  */
 
-export const locationCommand = z.object(commandEnvelope);
+/** Marked TBD in spec V3: the config keys aren't defined yet. */
+export const configCommand = z.object({
+  ...commandEnvelope,
+  config: z.record(z.string(), z.unknown()),
+});
+
+export const locationCommand = z.object({
+  ...commandEnvelope,
+  action: z.literal("get_current_location").default("get_current_location"),
+});
 
 export const buzzerCommand = z.object({
   ...commandEnvelope,
   enabled: z.boolean(),
-  duration: nonNegative.describe("seconds (unit not fixed by spec v1.2, see ADR 0002)"),
+  duration_ms: positiveInt.describe("ms"),
+  volume_percent: percentage.optional(),
 });
 
-export const rebootCommand = z.object(commandEnvelope);
+export const rebootCommand = z.object({
+  ...commandEnvelope,
+  reboot_enable: z.boolean().default(true),
+});
 
 export const peripheralCommand = z.object({
   ...commandEnvelope,
-  peripheral: z.string().min(1),
+  peripheral: z.string().min(1).describe("e.g. speaker"),
   enabled: z.boolean(),
 });
 
 export const sleepCommand = z.object({
   ...commandEnvelope,
-  mode: z.string().min(1),
+  action: z.literal("enter_sleep").default("enter_sleep"),
+  duration_seconds: positiveInt.describe("s"),
 });
 
+/** `settings/set/{setting}`: the group's fields; values are published typed (ADR 0011). */
 export function settingsSet<S extends SettingName>(setting: S) {
-  return z.object({ ...commandEnvelope, value: SETTINGS[setting].schema });
+  return z.object({
+    ...settingsEnvelope(setting),
+    action: z.literal("set"),
+    ...SETTINGS[setting].fields,
+  });
 }
 
-export const settingsGet = z.object(commandEnvelope);
+/** `settings/get/{setting}`: the collar answers on `settings/response/{setting}`. */
+export function settingsGet<S extends SettingName>(setting: S) {
+  return z.object({ ...settingsEnvelope(setting), action: z.literal("get") });
+}

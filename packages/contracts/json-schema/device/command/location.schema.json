@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/device/{device_id}/command/location",
-  "description": "Publisher QoS 1, retain false.",
+  "title": "pettracker/{device_id}/device/command/location",
+  "description": "Published by the backend, QoS 1, retain false.",
   "type": "object",
   "properties": {
     "timestamp": {
@@ -9,23 +9,28 @@
       "minimum": 0,
       "maximum": 99999999999
     },
-    "protocol_version": {
-      "type": "string"
-    },
     "request_id": {
       "type": "string",
       "minLength": 1,
       "maxLength": 64
+    },
+    "action": {
+      "default": "get_current_location",
+      "type": "string",
+      "const": "get_current_location"
     }
   },
   "required": [
     "timestamp",
-    "request_id"
+    "request_id",
+    "action"
   ],
+  "additionalProperties": false,
   "examples": [
     {
       "timestamp": 1717330000,
-      "request_id": "req_1003"
+      "request_id": "REQ_1003",
+      "action": "get_current_location"
     }
   ]
 }

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/device/settings/set/sensor_settings",
+  "description": "Published by the backend, QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "setting_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "setting_type": {
+      "type": "string",
+      "const": "sensor"
+    },
+    "action": {
+      "type": "string",
+      "const": "set"
+    },
+    "imu_enable": {
+      "type": "boolean"
+    },
+    "imu_sample_rate": {
+      "description": "milliseconds",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "imu_sleep_detect_timeout": {
+      "description": "seconds",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "imu_detach_detect_timeout": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      ],
+      "description": "seconds"
+    },
+    "bme_enable": {
+      "type": "boolean"
+    },
+    "temp_max_value": {
+      "description": "degC",
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    }
+  },
+  "required": [
+    "timestamp",
+    "setting_id",
+    "setting_type",
+    "action"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "action": "set",
+      "setting_id": "set_1004",
+      "setting_type": "sensor",
+      "imu_sample_rate": "60",
+      "imu_sleep_detect_timeout": "60",
+      "imu_detach_detect_timeout": "60",
+      "bme_enable": "true",
+      "temp_max_value": "60"
+    }
+  ]
+}

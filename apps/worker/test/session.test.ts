@@ -47,7 +47,7 @@ describe("MqttSession", () => {
       password: "p",
       keepAliveSeconds: 60,
       cleanSession: false,
-      subscriptions: [{ filter: "pettracker/backend/#", qos: 1 }],
+      subscriptions: [{ filter: "pettracker/+/backend/#", qos: 1 }],
       maxPacketBytes: 1024,
       now: () => clock,
       log: vi.fn(),
@@ -76,7 +76,7 @@ describe("MqttSession", () => {
   it("delivers QoS 1 messages and acknowledges them", () => {
     current.receive(
       encodePublish({
-        topic: "pettracker/backend/dog001/event/tamper",
+        topic: "pettracker/dog001/backend/event/tamper",
         payload: text("{}"),
         qos: 1,
         retain: false,
@@ -84,7 +84,7 @@ describe("MqttSession", () => {
       }),
     );
     expect(messages).toHaveLength(1);
-    expect(messages[0]?.topic).toBe("pettracker/backend/dog001/event/tamper");
+    expect(messages[0]?.topic).toBe("pettracker/dog001/backend/event/tamper");
     expect([...transport.last()]).toEqual([0x40, 2, 0, 42]); // PUBACK
   });
 
@@ -138,7 +138,7 @@ describe("MqttSession", () => {
   });
 
   it("publishes with QoS 1 and retain=false, resolving on PUBACK", async () => {
-    const done = current.publish("pettracker/device/dog001/command/reboot", text("{}"));
+    const done = current.publish("pettracker/dog001/device/command/reboot", text("{}"));
     const pkt = transport.last();
     expect((pkt[0] ?? 0) & 0x0f).toBe(0x02); // QoS 1, no retain, no dup
     const decoded = new PacketReader(1024).push(pkt);
@@ -149,7 +149,7 @@ describe("MqttSession", () => {
   });
 
   it("rejects in-flight publishes when the connection drops", async () => {
-    const done = current.publish("pettracker/device/dog001/command/reboot", text("{}"));
+    const done = current.publish("pettracker/dog001/device/command/reboot", text("{}"));
     current.close("socket closed (1006)");
     await expect(done).rejects.toThrow(/socket closed/);
     expect(closedWith).toEqual(["socket closed (1006)"]);

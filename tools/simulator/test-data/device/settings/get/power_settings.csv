@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type
+290,csvdog02,get,set_3004,power

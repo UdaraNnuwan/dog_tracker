@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type
+11,csvbad01,ack,set_9001,power

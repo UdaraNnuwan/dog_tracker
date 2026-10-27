@@ -23,8 +23,10 @@ describe("committed JSON Schemas", () => {
     expect(onDisk, hint).toBe(serialiseSchema(generated.get(rel)!));
   });
 
-  it("does not forbid unknown fields (spec §15)", () => {
-    for (const [rel, doc] of generated)
+  it("does not forbid unknown fields in what collars publish", () => {
+    for (const [rel, doc] of generated) {
+      if (rel.startsWith("device/") && !rel.startsWith("device/settings/ack/")) continue;
       expect(JSON.stringify(doc), rel).not.toContain('"additionalProperties":false');
+    }
   });
 });

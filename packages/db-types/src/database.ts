@@ -15,7 +15,6 @@ export type Database = {
           device_id: string;
           percentage: number;
           received_at: string;
-          temperature: number | null;
           ts: string;
           voltage: number;
         };
@@ -24,7 +23,6 @@ export type Database = {
           device_id: string;
           percentage: number;
           received_at: string;
-          temperature?: number | null;
           ts: string;
           voltage: number;
         };
@@ -33,7 +31,6 @@ export type Database = {
           device_id?: string;
           percentage?: number;
           received_at?: string;
-          temperature?: number | null;
           ts?: string;
           voltage?: number;
         };
@@ -121,7 +118,6 @@ export type Database = {
         Row: {
           battery_at: string | null;
           battery_percent: number | null;
-          battery_temperature: number | null;
           connectivity: string | null;
           connectivity_at: string | null;
           firmware_version: string | null;
@@ -132,11 +128,12 @@ export type Database = {
           location_at: string | null;
           longitude: number | null;
           name: string | null;
+          temperature: number | null;
+          temperature_at: string | null;
         };
         Insert: {
           battery_at?: string | null;
           battery_percent?: number | null;
-          battery_temperature?: number | null;
           connectivity?: string | null;
           connectivity_at?: string | null;
           firmware_version?: string | null;
@@ -147,11 +144,12 @@ export type Database = {
           location_at?: string | null;
           longitude?: number | null;
           name?: string | null;
+          temperature?: number | null;
+          temperature_at?: string | null;
         };
         Update: {
           battery_at?: string | null;
           battery_percent?: number | null;
-          battery_temperature?: number | null;
           connectivity?: string | null;
           connectivity_at?: string | null;
           firmware_version?: string | null;
@@ -162,37 +160,68 @@ export type Database = {
           location_at?: string | null;
           longitude?: number | null;
           name?: string | null;
+          temperature?: number | null;
+          temperature_at?: string | null;
         };
         Relationships: [];
       };
+      environment_readings: {
+        Row: {
+          device_id: string;
+          humidity: number;
+          pressure: number;
+          received_at: string;
+          temperature: number;
+          ts: string;
+        };
+        Insert: {
+          device_id: string;
+          humidity: number;
+          pressure: number;
+          received_at: string;
+          temperature: number;
+          ts: string;
+        };
+        Update: {
+          device_id?: string;
+          humidity?: number;
+          pressure?: number;
+          received_at?: string;
+          temperature?: number;
+          ts?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "environment_readings_device_id_fkey";
+            columns: ["device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       gps_points: {
         Row: {
-          accuracy: number | null;
           device_id: string;
           latitude: number;
           longitude: number;
           received_at: string;
-          satellites: number | null;
           speed: number | null;
           ts: string;
         };
         Insert: {
-          accuracy?: number | null;
           device_id: string;
           latitude: number;
           longitude: number;
           received_at: string;
-          satellites?: number | null;
           speed?: number | null;
           ts: string;
         };
         Update: {
-          accuracy?: number | null;
           device_id?: string;
           latitude?: number;
           longitude?: number;
           received_at?: string;
-          satellites?: number | null;
           speed?: number | null;
           ts?: string;
         };
@@ -270,28 +299,22 @@ export type Database = {
         Row: {
           device_id: string;
           received_at: string;
-          rsrp: number | null;
-          rsrq: number | null;
-          rssi: number | null;
-          sinr: number | null;
+          strength_lower_limit: number | null;
+          strength_upper_limit: number | null;
           ts: string;
         };
         Insert: {
           device_id: string;
           received_at: string;
-          rsrp?: number | null;
-          rsrq?: number | null;
-          rssi?: number | null;
-          sinr?: number | null;
+          strength_lower_limit?: number | null;
+          strength_upper_limit?: number | null;
           ts: string;
         };
         Update: {
           device_id?: string;
           received_at?: string;
-          rsrp?: number | null;
-          rsrq?: number | null;
-          rssi?: number | null;
-          sinr?: number | null;
+          strength_lower_limit?: number | null;
+          strength_upper_limit?: number | null;
           ts?: string;
         };
         Relationships: [

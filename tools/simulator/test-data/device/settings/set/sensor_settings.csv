@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type,imu_enable,imu_sample_rate,imu_sleep_detect_timeout,imu_detach_detect_timeout,bme_enable,temp_max_value
+240,csvdog01,set,set_2005,sensor,true,100,600,60,true,45

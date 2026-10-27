@@ -1,2 +1,2 @@
-offset_s,device_id,percentage,voltage
-180,csvdog02,15,3.44
+offset_s,device_id,percentage,voltage,threshold_percentage,charging
+180,csvdog02,14,3.44,15,false

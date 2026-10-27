@@ -3,10 +3,15 @@ import { describe, expect, it } from "vitest";
 import { IngestBuffer } from "../src/storage/IngestBuffer.js";
 import { GpsThinner, toStoredMessage } from "../src/storage/rows.js";
 
-const T = "pettracker/backend/dog001";
+const T = "pettracker/dog001/backend";
 const parse = (path: string, body: object | string) =>
   parseInbound(`${T}/${path}`, typeof body === "string" ? body : JSON.stringify(body));
-const gps = (ts: number, lat: number) => ({ timestamp: ts, latitude: lat, longitude: 79.8 });
+const gps = (ts: number, lat: number) => ({
+  timestamp: ts,
+  latitude: lat,
+  longitude: 79.8,
+  speed: 0,
+});
 
 describe("toStoredMessage", () => {
   it("keeps device time and receive time", () => {
@@ -34,19 +39,20 @@ describe("toStoredMessage", () => {
   });
 
   it("names settings responses by setting and drops raw IMU (rule 10)", () => {
-    const s = parse("settings/response/gps_interval", {
+    const s = parse("settings/response/gps_settings", {
       timestamp: 1,
-      request_id: "r",
-      status: "success",
-      value: 45,
+      action: "get_response",
+      setting_id: "s",
+      setting_type: "gps",
+      gps_interval: 45,
     });
     const imu = parse("telemetry/imu", {
       timestamp: 1,
-      accelerometer: { x: 0, y: 0, z: 9.8 },
+      acceleration: { x: 0, y: 0, z: 9.8 },
       gyroscope: { x: 0, y: 0, z: 0 },
     });
     if (!s.ok || !imu.ok) throw new Error("fixture");
-    expect(toStoredMessage(s.value, 2, false)?.topic).toBe("settings/response/gps_interval");
+    expect(toStoredMessage(s.value, 2, false)?.topic).toBe("settings/response/gps_settings");
     expect(toStoredMessage(imu.value, 2, false)).toBeNull();
   });
 });

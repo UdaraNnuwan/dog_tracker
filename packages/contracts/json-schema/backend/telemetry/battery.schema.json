@@ -1,16 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/backend/{device_id}/telemetry/battery",
-  "description": "Publisher QoS 0, retain false.",
+  "title": "pettracker/{device_id}/backend/telemetry/battery",
+  "description": "Published by the collar, QoS 0, retain false.",
   "type": "object",
   "properties": {
     "timestamp": {
       "type": "integer",
       "minimum": 0,
       "maximum": 99999999999
-    },
-    "protocol_version": {
-      "type": "string"
     },
     "voltage": {
       "type": "number",
@@ -25,10 +22,6 @@
     },
     "charging": {
       "type": "boolean"
-    },
-    "temperature": {
-      "description": "degC",
-      "type": "number"
     }
   },
   "required": [

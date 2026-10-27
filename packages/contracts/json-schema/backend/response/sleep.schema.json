@@ -1,41 +1,86 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/backend/{device_id}/response/sleep",
-  "description": "Publisher QoS 1, retain false.",
-  "type": "object",
-  "properties": {
-    "timestamp": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 99999999999
-    },
-    "protocol_version": {
-      "type": "string"
-    },
-    "request_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 64
-    },
-    "status": {
-      "type": "string",
-      "enum": [
-        "success",
-        "failed",
-        "rejected",
-        "unsupported"
+  "title": "pettracker/{device_id}/backend/response/sleep",
+  "description": "Published by the collar, QoS 1, retain false. TBD in spec V3 (pilot phase).",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999999
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "const": "success"
+        },
+        "action": {
+          "type": "string",
+          "const": "enter_sleep"
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "s"
+        }
+      },
+      "required": [
+        "timestamp",
+        "request_id",
+        "status",
+        "action",
+        "duration_seconds"
       ]
     },
-    "error_code": {
-      "type": "string"
-    },
-    "message": {
-      "type": "string"
+    {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99999999999
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "const": "error"
+        },
+        "action": {
+          "type": "string",
+          "const": "enter_sleep"
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "s"
+        }
+      },
+      "required": [
+        "timestamp",
+        "request_id",
+        "status"
+      ]
     }
-  },
-  "required": [
-    "timestamp",
-    "request_id",
-    "status"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330001,
+      "request_id": "REQ_1003",
+      "status": "success",
+      "action": "enter_sleep",
+      "duration_seconds": 600
+    }
   ]
 }

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/device/settings/set/profile_settings",
+  "description": "Published by the backend, QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "setting_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "setting_type": {
+      "type": "string",
+      "const": "profile"
+    },
+    "action": {
+      "type": "string",
+      "const": "set"
+    },
+    "pet_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner_qr": {
+      "type": "string"
+    },
+    "vaccination_status": {
+      "description": "0, 1, 2",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "next_vacc_due": {
+      "type": "string"
+    },
+    "vaccines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "completed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "date",
+          "completed"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "timestamp",
+    "setting_id",
+    "setting_type",
+    "action",
+    "pet_name"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "action": "set",
+      "setting_id": "set_1004",
+      "setting_type": "profile",
+      "pet_name": "shadow",
+      "owner_qr": "https://example.com/owner/shadow",
+      "vaccination_status": "1",
+      "next_vacc_due": "2027-01-01",
+      "vaccines": [
+        {
+          "name": "rabies",
+          "date": "2028-01-01",
+          "completed": "true"
+        },
+        {
+          "name": "distemper",
+          "date": "2028-01-01",
+          "completed": "true"
+        },
+        {
+          "name": "parvovirus",
+          "date": "2028-01-01",
+          "completed": "true"
+        }
+      ]
+    }
+  ]
+}

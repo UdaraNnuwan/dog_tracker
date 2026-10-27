@@ -19,18 +19,28 @@ export type Inject = (topic: string, payload: string) => void;
  * `at` is seconds after the start; `device` indexes the demo collars.
  */
 const SCRIPT: { at: number; device: number; path: string; body: Record<string, unknown> }[] = [
-  { at: 8, device: 0, path: "event/geofence", body: { geofence_id: "home", event: "exit" } },
+  { at: 8, device: 0, path: "event/geofence", body: { in_status: false, out_status: true } },
   // Invalid: percentage out of range and voltage missing.
   { at: 12, device: 0, path: "telemetry/battery", body: { percentage: 150, charging: false } },
-  { at: 16, device: 0, path: "event/low_battery", body: { percentage: 14, voltage: 3.55 } },
+  {
+    at: 16,
+    device: 0,
+    path: "event/low_battery",
+    body: { percentage: 14, voltage: 3.55, threshold_percentage: 15, charging: false },
+  },
   {
     at: 20,
     device: 1,
     path: "diagnostic/log",
-    body: { level: "error", module: "storage", error_type: "eeprom", error_code: "400004" },
+    body: { error_type: "eeprom", error_code: "400004" },
   },
-  { at: 24, device: 1, path: "event/tamper", body: { detected: true } },
-  { at: 30, device: 0, path: "event/geofence", body: { geofence_id: "home", event: "enter" } },
+  {
+    at: 24,
+    device: 1,
+    path: "diagnostic/debug_log",
+    body: { level: "warn", module: "gps", message: "GNSS fix lost" },
+  },
+  { at: 30, device: 0, path: "event/geofence", body: { in_status: true, out_status: false } },
 ];
 
 export interface DemoOptions {
@@ -74,8 +84,7 @@ export class DemoRun {
           {
             // Live publishes reach existing subscribers with retain=0 (MQTT 3.1.1 §3.3.1.3),
             // so the demo never marks messages as retained.
-            publish: (path, payload) =>
-              this.running && inject(backendTopic(deviceId, path), JSON.stringify(payload)),
+            publish: (topic, payload) => this.running && inject(topic, JSON.stringify(payload)),
             log: () => {},
             random: Math.random,
           },
@@ -96,12 +105,7 @@ export class DemoRun {
       this.timers.push(
         setTimeout(() => {
           if (!this.running) return;
-          const body = {
-            timestamp: Math.floor(Date.now() / 1000),
-            // Events say where they happened (optional in spec §6.3, sent by the simulator).
-            ...(step.path === "event/geofence" ? sim.position : {}),
-            ...step.body,
-          };
+          const body = { timestamp: Math.floor(Date.now() / 1000), ...step.body };
           this.inject(backendTopic(sim.id, step.path), JSON.stringify(body));
         }, step.at * 1000),
       );
@@ -120,7 +124,7 @@ export class DemoRun {
     return true;
   }
 
-  /** Ends the run: collars publish `offline` (graceful stop, spec §11). Idempotent. */
+  /** Ends the run: collars publish `offline` (graceful stop, ADR 0011). Idempotent. */
   stop(): void {
     if (!this.running) return;
     for (const t of this.timers) clearTimeout(t);

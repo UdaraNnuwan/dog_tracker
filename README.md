@@ -1,7 +1,8 @@
 # Udara Smart Dog Collar Monitoring
 
 Realtime monitoring web app for Smart Dog Collar devices, built against the
-[MQTT Interface Specification v1.2](docs/spec/Smart_Dog_Collar_MQTT_Interface_Specification_v1.2.pdf).
+[MQTT Topics & Payloads V3](docs/spec/Smart_Dog_Collar_MQTT_Topics_Payloads_V3.pdf)
+(how the backend reads it, and where it deviates: [ADR 0011](docs/adr/0011-mqtt-spec-v3.md)).
 Architecture, rules and build phases are in [CLAUDE.md](CLAUDE.md); decisions are in [docs/adr](docs/adr).
 
 ## Layout
@@ -12,7 +13,7 @@ Architecture, rules and build phases are in [CLAUDE.md](CLAUDE.md); decisions ar
 | `apps/web` | React + Vite SPA, served as the Worker's static assets. Currently the dev live view (ADR 0004) |
 | `packages/contracts` | Topic builders/parsers, Zod schema for every payload, settings registry, spec examples. Generated JSON Schema for firmware in `packages/contracts/json-schema` |
 | `packages/db-types` | Generated Supabase types (from phase 4) |
-| `tools/simulator` | Fake collars (mqtt.js): telemetry, events, LWT, command/settings responses |
+| `tools/simulator` | Fake collars (mqtt.js): telemetry, events, LWT, command responses, settings ACK/GET answers |
 
 ## Setup
 

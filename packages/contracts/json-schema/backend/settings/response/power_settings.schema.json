@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/backend/settings/response/power_settings",
+  "description": "Published by the collar, QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "setting_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "setting_type": {
+      "type": "string",
+      "const": "power"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "get_response",
+        "set"
+      ]
+    },
+    "power_mode": {
+      "type": "string"
+    },
+    "low_bat_thresh": {
+      "description": "%",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ]
+    },
+    "low_bat_alert_enable": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      ]
+    },
+    "inactive_timeout": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "seconds"
+    },
+    "display_timeout": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "seconds"
+    },
+    "display_brightness": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "1..100"
+    }
+  },
+  "required": [
+    "timestamp",
+    "setting_id",
+    "setting_type",
+    "action"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "action": "get_response",
+      "setting_id": "set_1003",
+      "setting_type": "power",
+      "power_mode": "active",
+      "low_bat_thresh": "20",
+      "low_bat_alert_enable": "true",
+      "inactive_timeout": "60",
+      "display_timeout": "30",
+      "display_brightness": "70"
+    }
+  ]
+}

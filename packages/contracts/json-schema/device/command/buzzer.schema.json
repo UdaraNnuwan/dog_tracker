@@ -1,16 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/device/{device_id}/command/buzzer",
-  "description": "Publisher QoS 1, retain false.",
+  "title": "pettracker/{device_id}/device/command/buzzer",
+  "description": "Published by the backend, QoS 1, retain false. TBD in spec V3 (pilot phase).",
   "type": "object",
   "properties": {
     "timestamp": {
       "type": "integer",
       "minimum": 0,
       "maximum": 99999999999
-    },
-    "protocol_version": {
-      "type": "string"
     },
     "request_id": {
       "type": "string",
@@ -20,24 +17,32 @@
     "enabled": {
       "type": "boolean"
     },
-    "duration": {
-      "type": "number",
+    "duration_ms": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991,
+      "description": "ms"
+    },
+    "volume_percent": {
+      "type": "integer",
       "minimum": 0,
-      "description": "seconds (unit not fixed by spec v1.2, see ADR 0002)"
+      "maximum": 100
     }
   },
   "required": [
     "timestamp",
     "request_id",
     "enabled",
-    "duration"
+    "duration_ms"
   ],
+  "additionalProperties": false,
   "examples": [
     {
       "timestamp": 1717330000,
-      "request_id": "req_1004",
+      "request_id": "REQ_1003",
       "enabled": true,
-      "duration": 5
+      "duration_ms": 1500,
+      "volume_percent": 70
     }
   ]
 }

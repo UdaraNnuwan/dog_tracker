@@ -1,9 +1,9 @@
 # CLAUDE.md – Udara Smart Dog Collar Monitoring
 
 Realtime monitoring web app for Smart Dog Collar devices. The single source of truth for
-topics and payloads is `docs/spec/Smart_Dog_Collar_MQTT_Interface_Specification_v1.2.pdf`
-(referred to as "the spec"). When code and spec disagree, the spec wins; record any
-deliberate deviation in `docs/adr/`.
+topics and payloads is `docs/spec/Smart_Dog_Collar_MQTT_Topics_Payloads_V3.pdf` (V3.0,
+2026-10-22, referred to as "the spec"; it replaced v1.2). When code and spec disagree, the spec
+wins; record any deliberate deviation in `docs/adr/` (V3 reading and deviations: ADR 0011).
 
 ## Stack
 - TypeScript (strict) everywhere, pnpm workspaces, Node 22+ (`.nvmrc`; Wrangler 4 requires it).
@@ -12,7 +12,7 @@ deliberate deviation in `docs/adr/`.
 - `apps/worker`: one Cloudflare Worker serving the SPA (static assets) + Hono API under `/api/*`.
   - Durable Object `MqttBridge` (single instance, id "main"): the only MQTT client.
     Connects to HiveMQ Cloud over WSS :8884 `/mqtt`, MQTT 3.1.1, fixed clientId,
-    cleanSession=false, subscribes `pettracker/backend/#` QoS 1. Also hosts browser
+    cleanSession=false, subscribes `pettracker/+/backend/#` and `pettracker/+/device/settings/ack/+` QoS 1. Also hosts browser
     WebSockets (Hibernation API) at `/api/live` for live telemetry fan-out.
     Writes to Supabase with `@supabase/supabase-js` using the Supabase secret key
     (`sb_secret_…`, formerly service_role; Worker secret only).
@@ -39,12 +39,16 @@ deliberate deviation in `docs/adr/`.
 - Notifications: in-app live toasts + Telegram bot.
 
 ## Topic model (from the spec)
-`pettracker/{destination}/{device_id}/{main_topic}/{sub_topic}`
-- `backend` = device → cloud; `device` = cloud → device. device_id lowercase, no spaces.
-- Ingest (subscribe): telemetry/{gps,battery,imu,signal_strength}, status/{system,network,connectivity},
-  event/{geofence,low_battery,tamper}, response/{location,buzzer,reboot,peripheral,sleep},
-  settings/response/{setting}, diagnostic/{log,crash,debug_log,sensor_health}.
-- Publish: command/{location,buzzer,reboot,peripheral,sleep}, settings/{set|get}/{setting}.
+`pettracker/{device_id}/{publisher}/{category}/{topic}`
+- `backend` = collar → cloud; `device` = cloud → collar. device_id lowercase, no spaces.
+- Ingest (subscribe, under `backend/`): telemetry/{gps,battery,imu,signal_strength,bme_data},
+  status/{system,network} (+ status/connectivity, kept for LWT: ADR 0011), event/{geofence,low_battery},
+  response/{config,location,buzzer,reboot,peripheral,sleep}, settings/response/{group},
+  diagnostic/{log,debug_log}. Also `device/settings/ack/{group}`: the collar's ACK to a SET.
+- Publish (under `device/`): command/{config,location,buzzer,reboot,peripheral,sleep},
+  settings/{set|get}/{group}. Groups: network_settings, gps_settings, profile_settings,
+  power_settings, sensor_settings, device_settings.
+- Topics marked TBD in the spec (pilot phase) are implemented and flagged as TBD.
   OTA (`command/firmware_update`) is a spec proposal: do NOT implement.
 
 ## Non-negotiable rules
@@ -52,19 +56,22 @@ deliberate deviation in `docs/adr/`.
    `wrangler secret put` (HIVEMQ_*, SUPABASE_SECRET_KEY, TELEGRAM_BOT_TOKEN); local dev via
    `.env` (gitignored). Browser never talks to HiveMQ. Only the Supabase URL + publishable key go
    to the frontend; the secret key never does. RLS is enabled on every table, no exceptions.
-2. Only `MqttBridge` publishes to MQTT. All publishes are QoS 1 and **retain=false** (spec §10:
-   commands must never be retained).
-3. Every command/settings request gets a backend-generated UUID `request_id`. Ack timeout 10 s,
-   up to 2 retries with the **same** request_id, 5–10 s backoff, then status `timeout`.
-   Responses deduped by request_id (spec §7).
+2. Only `MqttBridge` publishes to MQTT. All publishes are QoS 1 and **retain=false** (commands
+   must never be retained).
+3. Every command gets a backend-generated UUID `request_id`, every settings request a UUID
+   `setting_id`. Ack timeout 10 s, up to 2 retries with the **same** id, 5–10 s backoff, then
+   status `timeout`. Answers (command response, settings ACK for SET, settings response for GET)
+   are matched and deduped by that id.
 4. Validate every inbound message with the contracts Zod schema before use: topic namespace,
    known device, types, ranges, max size. Invalid → `rejected_messages` + structured log, never throw
-   out of the message handler. Ignore unknown extra fields (spec §15).
+   out of the message handler. Ignore unknown extra fields.
 5. `timestamp` fields are integer epoch **seconds**. Convert at the UI edge only.
 6. QoS 1 means duplicates: dedupe events by (device_id, topic, timestamp, payload hash).
-7. Connectivity = retained `status/connectivity` + LWT; also watchdog "no telemetry for N min".
-8. Settings are validated against the settings registry in `packages/contracts`
-   (currently `gps_interval`: integer seconds 10..86400) before publishing.
+7. Connectivity = retained `status/connectivity` + LWT (not in spec V3, kept as an optional topic:
+   ADR 0011); also watchdog "no telemetry for N min".
+8. Settings are validated against the settings registry in `packages/contracts` (six groups,
+   field rules from the spec tables) before publishing. Values are published as typed JSON;
+   inbound settings may use strings ("60", "true") as in the spec examples (ADR 0011).
 9. Commands and settings changes require role operator/owner and are written to `audit_log`.
 10. Stay within free tiers: batch upserts to Supabase (buffer in DO, flush every 5–10 s,
     `onConflict` for dedupe), do not persist raw IMU (live only), skip GPS points that moved < 5 m,
@@ -72,7 +79,7 @@ deliberate deviation in `docs/adr/`.
 
 ## Defaults for spec open decisions (§18)
 MQTT 3.1.1; GPS speed m/s (UI shows km/h); gyro deg/s; geofence computed on device
-(app only displays + alerts); no offline command queueing; settings catalogue = gps_interval only.
+(app only displays + alerts); no offline command queueing; settings = the six V3 groups.
 
 ## Code conventions
 - Small modules, pure functions for parsing/validation/alert rules (easy to unit test).

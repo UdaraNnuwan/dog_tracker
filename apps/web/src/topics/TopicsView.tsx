@@ -1,5 +1,5 @@
 import {
-  INGEST_SUBSCRIPTION,
+  INGEST_SUBSCRIPTIONS,
   topicDocs,
   type RequestStatus,
   type TopicDoc,
@@ -13,16 +13,17 @@ import { SendModal, STATE_CLASS } from "./SendModal.js";
 
 const keyOf = (d: TopicDoc) => `${d.direction}/${d.path}`;
 
-const DIRECTIONS = [
+/** Grouped by who publishes: settings ACKs live under `device/` but come from the collar. */
+const PUBLISHERS = [
   {
-    id: "backend",
+    id: "collar",
     title: "Subscribed",
-    hint: `device → cloud · the bridge subscribes to ${INGEST_SUBSCRIPTION}`,
+    hint: `collar → cloud · the bridge subscribes to ${INGEST_SUBSCRIPTIONS.join(" and ")}`,
   },
   {
-    id: "device",
+    id: "backend",
     title: "Published",
-    hint: "cloud → device · only the bridge publishes, QoS 1, retain=false",
+    hint: "cloud → collar · only the bridge publishes, QoS 1, retain=false",
   },
 ] as const;
 
@@ -77,8 +78,8 @@ export function TopicsView() {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
-        {DIRECTIONS.map((dir) => {
-          const items = docs.filter((d) => d.direction === dir.id && d.path.includes(q));
+        {PUBLISHERS.map((dir) => {
+          const items = docs.filter((d) => d.publisher === dir.id && d.path.includes(q));
           return (
             <div key={dir.id} className="topic-group">
               <div className="topics-dir">
@@ -128,7 +129,7 @@ function TopicDetail(props: {
 }) {
   const { doc, live, devices, requests } = props;
   const variants = schemaVariants(doc.schema);
-  const subscribed = doc.direction === "backend";
+  const subscribed = doc.publisher === "collar";
   const [sending, setSending] = useState(false);
   // Requests sent on this topic, newest first.
   const sent = Object.values(requests)
@@ -138,7 +139,7 @@ function TopicDetail(props: {
     <section className="panel topic-detail">
       <div className="topic-head">
         <span className={`pill ${subscribed ? "ok" : "warn"}`}>
-          {subscribed ? "Subscribe · device → cloud" : "Publish · cloud → device"}
+          {subscribed ? "Subscribe · collar → cloud" : "Publish · cloud → collar"}
         </span>
         <code className="topic-name">{doc.topic}</code>
         <CopyButton text={doc.topic} />
@@ -163,11 +164,14 @@ function TopicDetail(props: {
         </div>
         <div>
           <dt>Retain</dt>
-          <dd>{doc.retain === "optional" ? "optional" : doc.retain ? "yes" : "no"}</dd>
+          <dd>{doc.retain ? "yes" : "no"}</dd>
         </div>
         <div>
           <dt>Spec</dt>
-          <dd>{doc.sections.length ? doc.sections.map((s) => `§${s}`).join(", ") : "—"}</dd>
+          <dd>
+            {doc.sections.length ? doc.sections.map((s) => `§${s}`).join(", ") : "—"}
+            {doc.tbd && <span className="muted small"> · TBD (pilot phase)</span>}
+          </dd>
         </div>
         <div>
           <dt>{subscribed ? "Seen live" : "Sent"}</dt>
@@ -205,13 +209,11 @@ function TopicDetail(props: {
               </tbody>
             </table>
           </div>
-          {v.open && (
-            <p className="muted small">Free-form: any other fields are accepted (spec §9).</p>
-          )}
+          {v.open && <p className="muted small">Free-form: any other fields are accepted.</p>}
         </div>
       ))}
       <p className="muted small">
-        Unknown extra fields are ignored (spec §15). <code>timestamp</code> is epoch seconds.
+        Unknown extra fields are ignored (rule 4). <code>timestamp</code> is epoch seconds.
       </p>
 
       <div className="json-columns">

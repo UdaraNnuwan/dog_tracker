@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type,gps_interval,gps_enabled
+210,csvdog02,set,set_2002,gps,45,true

@@ -1,5 +1,5 @@
-offset_s,device_id,firmware_version:string,uptime,free_memory,reset_reason
-1,csvdog01,1.1.0,0,152320,power_on
-1,csvdog02,1.1.0,0,152320,power_on
-301,csvdog01,1.1.0,300,151100,power_on
-301,csvdog02,1.1.0,300,151100,power_on
+offset_s,device_id,firmware_version:string,uptime_seconds,free_heap_bytes,reset_reason,device_state
+1,csvdog01,1.1.0,0,185600,power_on,active
+1,csvdog02,1.1.0,0,185600,power_on,active
+301,csvdog01,1.1.0,300,184200,power_on,active
+301,csvdog02,1.1.0,300,183900,power_on,active

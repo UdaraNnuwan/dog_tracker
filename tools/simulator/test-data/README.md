@@ -1,19 +1,20 @@
 # CSV test data for `pnpm replay`
 
-One file per MQTT topic. The path is the topic after `pettracker/{direction}/{device_id}/`:
+One file per MQTT topic. The path is the topic after `pettracker/{device_id}/`:
 
 ```
-backend/telemetry/gps.csv      → pettracker/backend/<device_id>/telemetry/gps
-device/command/buzzer.csv      → pettracker/device/<device_id>/command/buzzer
+backend/telemetry/gps.csv               → pettracker/<device_id>/backend/telemetry/gps
+device/command/buzzer.csv               → pettracker/<device_id>/device/command/buzzer
+device/settings/ack/gps_settings.csv    → pettracker/<device_id>/device/settings/ack/gps_settings
 ```
 
 Columns: `offset_s` (seconds after start), `device_id`, then payload fields. Dots nest
-(`accelerometer.x`). Types are inferred (`true`/`false`, numbers, text). Force one with a suffix:
-`error_code:string`, `value:number`, `detected:boolean`, `extra:json`. Empty cells are left out.
-Without a `timestamp` column each message gets the current time. Device-bound rows without a
-`request_id` get a fresh UUID.
+(`acceleration.x`). Types are inferred (`true`/`false`, numbers, text). Force one with a suffix:
+`error_code:string`, `gps_interval:number`, `enabled:boolean`, `vaccines:json`. Empty cells are left out.
+Without a `timestamp` column each message gets the current time. Rows the backend would publish
+get a fresh UUID when they have none: `request_id` for commands, `setting_id` for settings SET/GET.
 
-This set covers every topic in the spec catalogue: two collars (`csvdog01`, `csvdog02`) over
+This set covers every topic in the spec V3 catalogue: two collars (`csvdog01`, `csvdog02`) over
 10 minutes. `../test-data-invalid` holds rows that must be rejected.
 
 ```sh

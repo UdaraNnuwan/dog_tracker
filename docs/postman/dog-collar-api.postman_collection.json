@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Smart Dog Collar API (dev)",
-    "description": "Worker API for local development (`pnpm dev`, http://localhost:8787). Device commands go through the bridge, which validates them and publishes to `pettracker/device/{id}/\u2026` with a backend-generated request_id (spec \u00a77, ADR 0009). Everything except /api/health needs LIVE_VIEW_UNAUTHENTICATED=true in apps/worker/.dev.vars and a localhost URL.\n\nTo publish raw MQTT messages (as a collar), see docs/postman/README.md.",
+    "description": "Worker API for local development (`pnpm dev`, http://localhost:8787). Device commands go through the bridge, which validates them and publishes to `pettracker/{id}/device/\u2026` with a backend-generated request_id / setting_id (spec V3 \u00a74, \u00a76, ADR 0009, ADR 0011). Everything except /api/health needs LIVE_VIEW_UNAUTHENTICATED=true in apps/worker/.dev.vars and a localhost URL.\n\nTo publish raw MQTT messages (as a collar), see docs/postman/README.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -75,8 +75,43 @@
       ]
     },
     {
-      "name": "Commands (spec \u00a77)",
+      "name": "Commands (spec V3 \u00a74)",
       "item": [
+        {
+          "name": "Config",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/commands/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                "{{deviceId}}",
+                "commands",
+                "config"
+              ]
+            },
+            "description": "Config keys are not defined yet (TBD in spec V3).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"config\": {\n    \"tracking_enabled\": true,\n    \"report_interval_seconds\": 30\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
         {
           "name": "Location",
           "request": {
@@ -100,7 +135,7 @@
                 "location"
               ]
             },
-            "description": "",
+            "description": "action \"get_current_location\" is added by the backend.",
             "body": {
               "mode": "raw",
               "raw": "{}",
@@ -135,10 +170,10 @@
                 "buzzer"
               ]
             },
-            "description": "duration in seconds (ADR 0002).",
+            "description": "duration_ms > 0, volume_percent 0..100 (optional). TBD in spec V3.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"enabled\": true,\n  \"duration\": 5\n}",
+              "raw": "{\n  \"enabled\": true,\n  \"duration_ms\": 1500,\n  \"volume_percent\": 70\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -173,7 +208,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n  \"reboot_enable\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -208,7 +243,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"peripheral\": \"gps\",\n  \"enabled\": true\n}",
+              "raw": "{\n  \"peripheral\": \"speaker\",\n  \"enabled\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -240,10 +275,10 @@
                 "sleep"
               ]
             },
-            "description": "",
+            "description": "action \"enter_sleep\" is added by the backend. TBD in spec V3.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"mode\": \"deep\"\n}",
+              "raw": "{\n  \"duration_seconds\": 600\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -255,10 +290,10 @@
       ]
     },
     {
-      "name": "Settings (spec \u00a78)",
+      "name": "Settings (spec V3 \u00a76)",
       "item": [
         {
-          "name": "Set gps_interval",
+          "name": "Set gps_settings",
           "request": {
             "method": "POST",
             "header": [
@@ -268,7 +303,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/settings/gps_interval/set",
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/settings/gps_settings/set",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -277,14 +312,14 @@
                 "devices",
                 "{{deviceId}}",
                 "settings",
-                "gps_interval",
+                "gps_settings",
                 "set"
               ]
             },
-            "description": "Integer seconds 10..86400; out-of-range values return 400 before anything is published.",
+            "description": "Body: any fields of the group. Values may also be strings (\"60\", \"true\"); they are published as JSON numbers/booleans (ADR 0011). Invalid values return 400 before anything is published (rule 8). Completes when the collar ACKs on device/settings/ack/gps_settings.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"value\": 45\n}",
+              "raw": "{\n  \"gps_interval\": 60,\n  \"gps_enabled\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -294,7 +329,7 @@
           }
         },
         {
-          "name": "Get gps_interval",
+          "name": "Get gps_settings",
           "request": {
             "method": "POST",
             "header": [
@@ -304,7 +339,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/settings/gps_interval/get",
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/settings/gps_settings/get",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -313,14 +348,50 @@
                 "devices",
                 "{{deviceId}}",
                 "settings",
-                "gps_interval",
+                "gps_settings",
                 "get"
               ]
             },
-            "description": "",
+            "description": "The collar answers on backend/settings/response/gps_settings.",
             "body": {
               "mode": "raw",
               "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Set device_settings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/settings/device_settings/set",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                "{{deviceId}}",
+                "settings",
+                "gps_settings",
+                "set"
+              ]
+            },
+            "description": "Groups: network_settings, gps_settings, profile_settings, power_settings, sensor_settings, device_settings.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audio_volume\": 60,\n  \"display_brightness\": 70,\n  \"geofence_alert_enable\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -356,7 +427,7 @@
           }
         },
         {
-          "name": "Battery & temperature",
+          "name": "Battery",
           "request": {
             "method": "GET",
             "header": [],
@@ -398,6 +469,27 @@
                 "{{deviceId}}",
                 "history",
                 "signal"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Temperature & humidity (BME)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/history/environment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices",
+                "{{deviceId}}",
+                "history",
+                "environment"
               ]
             },
             "description": ""

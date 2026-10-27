@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/device/settings/get/network_settings",
+  "description": "Published by the backend, QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "setting_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "setting_type": {
+      "type": "string",
+      "const": "network"
+    },
+    "action": {
+      "type": "string",
+      "const": "get"
+    }
+  },
+  "required": [
+    "timestamp",
+    "setting_id",
+    "setting_type",
+    "action"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "action": "get",
+      "setting_id": "set_1003",
+      "setting_type": "network"
+    }
+  ]
+}

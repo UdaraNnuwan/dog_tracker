@@ -55,7 +55,7 @@ describe("live model", () => {
           deviceId: "dog1",
           latest: {
             "telemetry/gps": {
-              data: { timestamp: 2, latitude: 6.1, longitude: 79 },
+              data: { timestamp: 2, latitude: 6.1, longitude: 79, speed: 0 },
               receivedAt: 200,
             },
           },

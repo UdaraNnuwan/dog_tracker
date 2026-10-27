@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type,power_mode,low_bat_thresh,low_bat_alert_enable,inactive_timeout
+230,csvdog02,set,set_2004,power,active,20,true,60

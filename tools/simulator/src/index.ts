@@ -1,7 +1,7 @@
 /**
  * Fake collars for development: `pnpm sim --devices 5`. Run with --help for options.
  * Each device is its own mqtt.js client (an implementation independent of the bridge's
- * codec, ADR 0001 §1) with a retained online state and a Last Will (spec §11).
+ * codec, ADR 0001 §1) with a retained online state and a Last Will (ADR 0011).
  */
 import { parseArgs } from "node:util";
 import mqtt from "mqtt";
@@ -13,7 +13,7 @@ const HELP = `Usage: pnpm sim [options]
   --devices <n>         number of collars (default 3)
   --prefix <s>          device id prefix; ids are <prefix>01, <prefix>02, … (default "sim")
   --interval <s>        telemetry period in seconds until gps_interval is set (default 5)
-  --fail-rate <0..1>    share of commands/settings that fail (default 0)
+  --fail-rate <0..1>    share of commands that fail / SETs left unacknowledged (default 0)
   --duplicate-rate <0..1> share of responses published twice (default 0)
   --delay <min-max>     response delay in ms (default 300-1500)
   --home <lat,lon>      geofence centre and start point (default 6.9271,79.8612 Colombo)
@@ -91,8 +91,8 @@ for (let i = 1; i <= count; i++) {
       responseDelayMs: { min: minDelay, max: maxDelay },
     },
     {
-      publish: (path, payload, opts) => {
-        client?.publish(backendTopic(deviceId, path), JSON.stringify(payload), opts);
+      publish: (topic, payload, opts) => {
+        client?.publish(topic, JSON.stringify(payload), opts);
       },
       log: (msg) => console.log(msg),
       random: Math.random,

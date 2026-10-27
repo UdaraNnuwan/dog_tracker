@@ -1,6 +1,6 @@
 # ADR 0002: Payload contracts (`@udara/contracts`)
 
-- Status: Accepted (phase 2)
+- Status: Accepted (phase 2); topic layout, payload rules and settings amended by [ADR 0011](0011-mqtt-spec-v3.md) (spec V3)
 - Date: 2026-10-19
 
 ## Context

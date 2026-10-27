@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "pettracker/backend/{device_id}/status/system",
-  "description": "Publisher QoS 0, retain optional.",
+  "title": "pettracker/{device_id}/backend/status/system",
+  "description": "Published by the collar, QoS 0, retain false.",
   "type": "object",
   "properties": {
     "timestamp": {
@@ -9,19 +9,17 @@
       "minimum": 0,
       "maximum": 99999999999
     },
-    "protocol_version": {
-      "type": "string"
-    },
     "firmware_version": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.+-]+)?$"
     },
-    "uptime": {
-      "description": "s",
+    "uptime_seconds": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 9007199254740991
+      "maximum": 9007199254740991,
+      "description": "s"
     },
-    "free_memory": {
+    "free_heap_bytes": {
       "description": "bytes",
       "type": "integer",
       "minimum": 0,
@@ -29,18 +27,30 @@
     },
     "reset_reason": {
       "type": "string"
+    },
+    "device_state": {
+      "type": "string",
+      "enum": [
+        "active",
+        "sleep",
+        "idle"
+      ]
     }
   },
   "required": [
-    "timestamp"
+    "timestamp",
+    "firmware_version",
+    "uptime_seconds",
+    "device_state"
   ],
   "examples": [
     {
       "timestamp": 1717330000,
-      "firmware_version": "1.1.0",
-      "uptime": 86400,
-      "free_memory": 152320,
-      "reset_reason": "power_on"
+      "firmware_version": "1.0.0",
+      "uptime_seconds": 86400,
+      "free_heap_bytes": 185600,
+      "reset_reason": "power_on",
+      "device_state": "active"
     }
   ]
 }

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/backend/settings/response/network_settings",
+  "description": "Published by the collar, QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "setting_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "setting_type": {
+      "type": "string",
+      "const": "network"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "get_response",
+        "set"
+      ]
+    },
+    "mqtt_hb_interval": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "seconds"
+    },
+    "mqtt_retry_interval": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "seconds"
+    },
+    "telemetry_interval": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "seconds"
+    }
+  },
+  "required": [
+    "timestamp",
+    "setting_id",
+    "setting_type",
+    "action"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "action": "get_response",
+      "setting_id": "set_1003",
+      "setting_type": "network",
+      "mqtt_hb_interval": "60",
+      "mqtt_retry_interval": "60",
+      "telemetry_interval": "60"
+    }
+  ]
+}

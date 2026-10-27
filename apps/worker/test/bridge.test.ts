@@ -33,21 +33,21 @@ describe("MqttBridge", () => {
   });
 
   it.each([
-    "pettracker/backend/dog001/telemetry/gps",
-    "pettracker/device/+/command/reboot",
-    "pettracker/device/dog001",
+    "pettracker/dog001/backend/telemetry/gps",
+    "pettracker/+/device/command/reboot",
+    "pettracker/dog001/device",
   ])("refuses to publish to %s", async (topic) => {
     expect(await publishError(topic, "{}")).toMatch(/refusing to publish/);
   });
 
   it("refuses oversized payloads", async () => {
     expect(
-      await publishError("pettracker/device/dog001/command/buzzer", "x".repeat(16 * 1024 + 1)),
+      await publishError("pettracker/dog001/device/command/buzzer", "x".repeat(16 * 1024 + 1)),
     ).toMatch(/too large/);
   });
 
   it("refuses to publish while disconnected", async () => {
-    expect(await publishError("pettracker/device/dog001/command/reboot", "{}")).toMatch(
+    expect(await publishError("pettracker/dog001/device/command/reboot", "{}")).toMatch(
       /not connected/,
     );
   });

@@ -76,8 +76,12 @@ describe("topicFromFile", () => {
       { direction: "backend", path: "status/connectivity", qos: 1, retain: true },
     ],
     [
-      "backend/settings/response/gps_interval.csv",
-      { direction: "backend", path: "settings/response/gps_interval", qos: 1, retain: false },
+      "backend/settings/response/gps_settings.csv",
+      { direction: "backend", path: "settings/response/gps_settings", qos: 1, retain: false },
+    ],
+    [
+      "device/settings/ack/gps_settings.csv",
+      { direction: "device", path: "settings/ack/gps_settings", qos: 1, retain: false },
     ],
     [
       "device/command/buzzer.csv",
@@ -87,12 +91,15 @@ describe("topicFromFile", () => {
     expect(topicFromFile(file)).toEqual(spec);
   });
 
-  it.each(["backend/telemetry/temp.csv", "device/command/dance.csv", "other/x.csv"])(
-    "rejects %s",
-    (file) => {
-      expect(typeof topicFromFile(file)).toBe("string");
-    },
-  );
+  it.each([
+    "backend/telemetry/temp.csv",
+    "backend/settings/response/gps_interval.csv",
+    "device/command/dance.csv",
+    "device/settings/set/led_colour.csv",
+    "other/x.csv",
+  ])("rejects %s", (file) => {
+    expect(typeof topicFromFile(file)).toBe("string");
+  });
 });
 
 describe("bundled test data", () => {
@@ -113,12 +120,13 @@ describe("bundled test data", () => {
   const issuesOf = (file: string, deviceId: string, payload: Record<string, unknown>) => {
     const spec = topicFromFile(file);
     if (typeof spec === "string") return [spec];
-    return validatePayload(spec, deviceId, { timestamp: 1792380000, request_id: "r", ...payload });
+    const id = spec.path.startsWith("settings/") ? { setting_id: "s" } : { request_id: "r" };
+    return validatePayload(spec, deviceId, { timestamp: 1792380000, ...id, ...payload });
   };
 
   it("test-data covers every topic in the catalogue and is valid", async () => {
     const sets = await load("test-data");
-    expect(sets.length).toBe(27);
+    expect(sets.length).toBe(48);
     for (const { file, rows } of sets) {
       for (const r of rows)
         expect(issuesOf(file, r.deviceId!, r.payload), `${file}:${r.line}`).toEqual([]);

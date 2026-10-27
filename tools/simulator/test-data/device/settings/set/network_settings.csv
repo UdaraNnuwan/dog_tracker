@@ -1,0 +1,2 @@
+offset_s,device_id,action,setting_id:string,setting_type,mqtt_hb_interval,mqtt_retry_interval,telemetry_interval
+200,csvdog01,set,set_2001,network,60,60,30

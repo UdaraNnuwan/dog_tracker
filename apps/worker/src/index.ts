@@ -3,7 +3,7 @@ import {
   buildCommand,
   buildSettingsGet,
   buildSettingsSet,
-  DEVICE_PREFIX,
+  deviceTopic,
   isCommandName,
   isValidDeviceId,
   type CommandParams,
@@ -185,7 +185,10 @@ app.delete("/demo", async (c) => c.json(await bridge(c.env).stopDemo()));
 
 // ------------------------------------------------------------------ commands & settings
 
-/** Rule 3: every request gets a backend-generated UUID; timestamps are epoch seconds. */
+/**
+ * Rule 3: every request gets a backend-generated UUID (request_id of a command, setting_id of
+ * a settings request); timestamps are epoch seconds.
+ */
 const requestMeta = () => ({
   requestId: crypto.randomUUID(),
   timestamp: Math.floor(Date.now() / 1000),
@@ -207,7 +210,7 @@ async function send(env: Env, built: ParseResult<OutboundMessage>, deviceId: str
     );
   }
   const { topic, payload, requestId } = built.value;
-  const path = topic.slice(`${DEVICE_PREFIX}${deviceId}/`.length);
+  const path = topic.slice(deviceTopic(deviceId, "").length);
   log("info", "request sent", { device_id: deviceId, topic, request_id: requestId });
   const status = await bridge(env).sendRequest({
     requestId,
@@ -222,7 +225,7 @@ async function send(env: Env, built: ParseResult<OutboundMessage>, deviceId: str
 app.get("/requests", async (c) => c.json({ requests: await bridge(c.env).requestList() }));
 
 /**
- * `POST /api/devices/:id/commands/:name` with the command's own fields as JSON (spec §7).
+ * `POST /api/devices/:id/commands/:name` with the command's own fields as JSON (spec V3 §4).
  * Development only until auth lands: then operator/owner + audit_log (rule 9, ADR 0009).
  */
 app.post("/devices/:id/commands/:name", async (c) => {
@@ -237,7 +240,10 @@ app.post("/devices/:id/commands/:name", async (c) => {
   );
 });
 
-/** `POST /api/devices/:id/settings/:setting/set` `{value}` and `…/get` (spec §8, rule 8). */
+/**
+ * `POST /api/devices/:id/settings/:setting/set` with the group's fields as JSON, e.g.
+ * `/settings/gps_settings/set` `{"gps_interval": 60}`, and `…/get` (spec V3 §6, rule 8).
+ */
 app.post("/devices/:id/settings/:setting/:op", async (c) => {
   const deviceId = c.req.param("id");
   const setting = c.req.param("setting");
@@ -245,8 +251,8 @@ app.post("/devices/:id/settings/:setting/:op", async (c) => {
   if (op === "get")
     return send(c.env, buildSettingsGet(deviceId, setting, requestMeta()), deviceId);
   if (op !== "set") return c.json({ error: "bad_request", reason: "op must be set or get" }, 400);
-  const { value } = await jsonBody(c.req.raw);
-  return send(c.env, buildSettingsSet(deviceId, setting, value, requestMeta()), deviceId);
+  const fields = await jsonBody(c.req.raw);
+  return send(c.env, buildSettingsSet(deviceId, setting, fields, requestMeta()), deviceId);
 });
 
 /** Clears stored history (and the bridge's buffered/live state) for one device. */

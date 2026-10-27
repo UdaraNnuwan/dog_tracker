@@ -17,28 +17,30 @@ describe("schemaVariants", () => {
       rules: "-90…90",
       input: { kind: "number", min: -90, max: 90 },
     });
-    expect(byName.speed).toMatchObject({ required: false, rules: "≥ 0 · m/s" });
+    expect(byName.speed).toMatchObject({ required: true, rules: "≥ 0 · m/s" });
     // Huge technical bounds are hidden.
     expect(byName.timestamp).toMatchObject({ type: "integer", rules: "≥ 0" });
   });
 
-  it("shows enums and marks opaque payloads as open", () => {
+  it("shows enums and offers them as choices", () => {
     const [conn] = schemaVariants(doc("backend", "status/connectivity").schema);
     expect(conn!.fields.find((f) => f.name === "status")!.type).toBe('"online" | "offline"');
-    expect(schemaVariants(doc("backend", "diagnostic/crash").schema)[0]!.open).toBe(true);
+    const [system] = schemaVariants(doc("backend", "status/system").schema);
+    expect(system!.fields.find((f) => f.name === "device_state")!.input).toEqual({
+      kind: "enum",
+      options: ["active", "sleep", "idle"],
+    });
   });
 
   it("describes form inputs for the send dialog", () => {
     const [buzzer] = schemaVariants(doc("device", "command/buzzer").schema);
     const inputs = Object.fromEntries(buzzer!.fields.map((f) => [f.name, f.input]));
     expect(inputs.enabled).toEqual({ kind: "boolean" });
-    expect(inputs.duration).toEqual({ kind: "number", min: 0, max: null });
-    const [set] = schemaVariants(doc("device", "settings/set/gps_interval").schema);
-    expect(set!.fields.find((f) => f.name === "value")!.input).toEqual({
-      kind: "integer",
-      min: 10,
-      max: 86400,
-    });
+    expect(inputs.duration_ms).toEqual({ kind: "integer", min: 1, max: null });
+    const [set] = schemaVariants(doc("device", "settings/set/device_settings").schema);
+    const volume = set!.fields.find((f) => f.name === "audio_volume")!;
+    expect(volume.input).toEqual({ kind: "integer", min: 1, max: 100 });
+    expect(volume.required).toBe(false);
   });
 
   it("gives every topic at least one field table", () => {

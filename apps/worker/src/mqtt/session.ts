@@ -114,7 +114,7 @@ export class MqttSession {
   }
 
   /**
-   * QoS 1, retain=false — fixed, not parameters (CLAUDE.md rule 2, spec §10).
+   * QoS 1, retain=false — fixed, not parameters (CLAUDE.md rule 2).
    * Resolves on PUBACK; rejects if the connection drops first (the caller's
    * request_id-level retry handles redelivery, see ADR 0001).
    */

@@ -26,15 +26,17 @@ describe("DemoRun", () => {
     expect(rejected).toHaveLength(1);
     expect(rejected[0]).toMatchObject({ reason: "invalid_payload", path: "telemetry/battery" });
     const paths = new Set(accepted.map((r) => (r.ok ? r.value.path : "")));
-    for (const p of ["telemetry/gps", "event/geofence", "event/tamper", "diagnostic/log"]) {
+    for (const p of [
+      "telemetry/gps",
+      "telemetry/bme_data",
+      "event/geofence",
+      "event/low_battery",
+      "diagnostic/log",
+      "diagnostic/debug_log",
+    ]) {
       expect(paths).toContain(p);
     }
-    const geofence = accepted.find((r) => r.ok && r.value.path === "event/geofence");
-    expect(geofence?.ok && geofence.value.data).toMatchObject({
-      latitude: expect.any(Number) as number,
-      longitude: expect.any(Number) as number,
-    });
-    expect(seen.at(-1)?.topic).toBe("pettracker/backend/demo02/status/connectivity");
+    expect(seen.at(-1)?.topic).toBe("pettracker/demo02/backend/status/connectivity");
     expect(JSON.parse(seen.at(-1)!.payload)).toEqual({ status: "offline" });
     expect(ended).toBe(1);
     expect(run.status().running).toBe(false);

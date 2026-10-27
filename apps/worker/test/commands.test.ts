@@ -21,9 +21,11 @@ describe("commands & settings API", () => {
   });
 
   it("validates before publishing (rule 8)", async () => {
-    const tooShort = await post("/devices/demo01/settings/gps_interval/set", { value: 5 });
+    const tooShort = await post("/devices/demo01/settings/gps_settings/set", { gps_interval: 0 });
     expect(tooShort.status).toBe(400);
     expect(await tooShort.json()).toMatchObject({ reason: "invalid_payload" });
+    const unknown = await post("/devices/demo01/settings/gps_interval/set", { value: 45 });
+    expect(await unknown.json()).toMatchObject({ reason: "unknown_setting" });
     expect((await post("/devices/demo01/commands/firmware_update", {})).status).toBe(400);
     expect((await post("/devices/demo01/commands/buzzer", { enabled: "yes" })).status).toBe(400);
     expect((await post("/devices/Bad/commands/reboot", {})).status).toBe(400);
@@ -32,12 +34,12 @@ describe("commands & settings API", () => {
   it("reports a send failure when neither MQTT nor a demo collar can take it", async () => {
     const res = await post("/devices/nobody/commands/reboot", {});
     expect(res.status).toBe(202);
-    expect(await res.json()).toMatchObject({ state: "error", error: "mqtt not connected" });
+    expect(await res.json()).toMatchObject({ state: "failed", error: "mqtt not connected" });
   });
 
   it("round-trips a command and a setting with a demo collar", async () => {
     await post("/demo", { devices: 1, seconds: 30 });
-    const cmd = await post("/devices/demo01/commands/buzzer", { enabled: true, duration: 2 });
+    const cmd = await post("/devices/demo01/commands/buzzer", { enabled: true, duration_ms: 2000 });
     expect(cmd.status).toBe(202);
     const sent = await cmd.json<RequestStatus>();
     expect(sent).toMatchObject({
@@ -45,16 +47,23 @@ describe("commands & settings API", () => {
       path: "command/buzzer",
       responsePath: "response/buzzer",
     });
-    expect(JSON.parse(sent.payload)).toMatchObject({
+    expect(JSON.parse(sent.payload)).toEqual({
+      timestamp: expect.any(Number) as number,
       enabled: true,
-      duration: 2,
+      duration_ms: 2000,
       request_id: sent.requestId,
-      protocol_version: "1.2",
     });
     expect(sent.requestId).toMatch(/^[0-9a-f-]{36}$/);
     const set = await (
-      await post("/devices/demo01/settings/gps_interval/set", { value: 45 })
+      await post("/devices/demo01/settings/gps_settings/set", { gps_interval: "45" })
     ).json<RequestStatus>();
+    expect(set).toMatchObject({ responsePath: "settings/ack/gps_settings" });
+    expect(JSON.parse(set.payload)).toMatchObject({
+      action: "set",
+      setting_id: set.requestId,
+      setting_type: "gps",
+      gps_interval: 45,
+    });
 
     // The simulator answers after 300–1000 ms.
     const { app } = await import("../src/index.js");
@@ -76,7 +85,10 @@ describe("commands & settings API", () => {
       status: "success",
     });
     expect(setDone.state).toBe("success");
-    expect(JSON.parse(setDone.response!)).toMatchObject({ value: 45 });
+    expect(JSON.parse(setDone.response!)).toMatchObject({
+      action: "ack",
+      setting_id: set.requestId,
+    });
     await app.request("http://localhost/api/demo", { method: "DELETE" }, flagged);
   });
 });

@@ -10,6 +10,8 @@ export interface FieldRow {
   rules: string;
   /** How a form should ask for this field (the send dialog). */
   input: FieldInput;
+  /** The schema's default, used as the form's starting value. */
+  default?: unknown;
 }
 
 export type FieldInput =
@@ -49,9 +51,12 @@ function rulesOf(s: Schema): string {
   const num = (k: string) => (typeof s[k] === "number" ? s[k] : null);
   const min = num("minimum");
   const max = num("maximum");
+  const above = num("exclusiveMinimum");
   const hasMax = max !== null && max < NOISE_MAX;
   if (min !== null && hasMax) out.push(`${min}…${max}`);
   else if (min !== null) out.push(`≥ ${min}`);
+  else if (above !== null && hasMax) out.push(`> ${above}, ≤ ${max}`);
+  else if (above !== null) out.push(`> ${above}`);
   else if (hasMax) out.push(`≤ ${max}`);
   const minLen = num("minLength");
   const maxLen = num("maxLength");
@@ -70,8 +75,13 @@ function inputOf(s: Schema): FieldInput {
     case "boolean":
       return { kind: "boolean" };
     case "integer":
-    case "number":
-      return { kind: s.type, min: num("minimum"), max: num("maximum") };
+    case "number": {
+      // `> 0` on an integer is `≥ 1` for the form.
+      const above = num("exclusiveMinimum");
+      const min =
+        num("minimum") ?? (above === null ? null : above + (s.type === "integer" ? 1 : 0));
+      return { kind: s.type, min, max: num("maximum") };
+    }
     case "string":
       return { kind: "string", minLength: num("minLength") };
     default:
@@ -90,6 +100,7 @@ function fieldsOf(s: Schema): FieldRow[] {
       required: required.has(name),
       rules: rulesOf(p),
       input: inputOf(p),
+      ...("default" in p ? { default: p.default } : {}),
     }));
 }
 

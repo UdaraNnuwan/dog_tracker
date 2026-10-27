@@ -1,7 +1,7 @@
 import {
   COMMANDS,
   INBOUND_TOPICS,
-  SETTINGS_RESPONSE_TOPIC,
+  SETTINGS_TOPIC,
   formatIssues,
   isCommandName,
   isSettingName,
@@ -10,11 +10,12 @@ import {
   type InboundTopicPath,
 } from "@udara/contracts";
 
+/** The topic's publisher segment (spec V3): `backend` = collar → backend, `device` = backend → collar. */
 export type Direction = "backend" | "device";
 
 export interface TopicSpec {
   direction: Direction;
-  /** Path after `pettracker/{direction}/{device_id}/`. */
+  /** Path after `pettracker/{device_id}/{direction}/`. */
   path: string;
   qos: 0 | 1;
   retain: boolean;
@@ -30,11 +31,11 @@ export function topicFromFile(relative: string): TopicSpec | string {
   if (direction === "backend") {
     if (Object.hasOwn(INBOUND_TOPICS, path)) {
       const e = INBOUND_TOPICS[path as InboundTopicPath];
-      return { direction, path, qos: e.qos, retain: e.retain === true };
+      return { direction, path, qos: e.qos, retain: e.retain };
     }
     const setting = path.match(/^settings\/response\/(.+)$/)?.[1];
-    if (setting !== undefined) {
-      return { direction, path, qos: SETTINGS_RESPONSE_TOPIC.qos, retain: false };
+    if (setting !== undefined && isSettingName(setting)) {
+      return { direction, path, ...SETTINGS_TOPIC };
     }
     return `unknown backend topic "${path}"`;
   }
@@ -43,37 +44,43 @@ export function topicFromFile(relative: string): TopicSpec | string {
     if (kind === "command" && isCommandName(a) && b === undefined) {
       return { direction, path, qos: 1, retain: false };
     }
-    if (kind === "settings" && (a === "set" || a === "get") && b) {
-      return { direction, path, qos: 1, retain: false };
+    // `ack` is published by the collar, but lives under `device/` (spec V3 §6).
+    if (kind === "settings" && ["set", "get", "ack"].includes(a) && b && isSettingName(b)) {
+      return { direction, path, ...SETTINGS_TOPIC };
     }
     return `unknown device topic "${path}"`;
   }
   return `first folder must be "backend" or "device", got "${direction}"`;
 }
 
+/** Topics the collar publishes, i.e. the ones the bridge ingests. */
+export const isCollarTopic = (spec: TopicSpec) =>
+  spec.direction === "backend" || spec.path.startsWith("settings/ack/");
+
 /**
- * Validates a payload with the same contracts the bridge (backend topics) and the collar
- * (device topics) use. Returns issues; empty means valid.
+ * Validates a payload with the same contracts the bridge (collar topics) and the collar
+ * (backend-published topics) use. Returns issues; empty means valid.
  */
 export function validatePayload(
   spec: TopicSpec,
   deviceId: string,
   payload: Record<string, unknown>,
 ): string[] {
-  if (spec.direction === "backend") {
-    const r = parseInbound(`pettracker/backend/${deviceId}/${spec.path}`, JSON.stringify(payload));
+  if (isCollarTopic(spec)) {
+    const topic = `pettracker/${deviceId}/${spec.direction}/${spec.path}`;
+    const r = parseInbound(topic, JSON.stringify(payload));
     return r.ok ? [] : [r.reason, ...r.issues];
   }
   const [kind, a = "", b = ""] = spec.path.split("/");
   const schema =
     kind === "command" && isCommandName(a)
       ? COMMANDS[a]
-      : a === "get"
-        ? schemas.settingsGet
-        : isSettingName(b)
+      : isSettingName(b)
+        ? a === "set"
           ? schemas.settingsSet(b)
-          : null;
-  if (!schema) return [`unknown setting "${b}"`];
+          : schemas.settingsGet(b)
+        : null;
+  if (!schema) return [`unknown topic "${spec.path}"`];
   const r = schema.safeParse(payload);
   return r.success ? [] : formatIssues(r.error);
 }

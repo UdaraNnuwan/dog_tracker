@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pettracker/{device_id}/backend/settings/response/sensor_settings",
+  "description": "Published by the collar, QoS 1, retain false.",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999
+    },
+    "setting_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "setting_type": {
+      "type": "string",
+      "const": "sensor"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "get_response",
+        "set"
+      ]
+    },
+    "imu_enable": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      ]
+    },
+    "imu_sample_rate": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "milliseconds"
+    },
+    "imu_sleep_detect_timeout": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "seconds"
+    },
+    "imu_detach_detect_timeout": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ],
+      "description": "seconds"
+    },
+    "bme_enable": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        }
+      ]
+    },
+    "temp_max_value": {
+      "description": "degC",
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "string",
+          "pattern": "^-?\\d+$"
+        }
+      ]
+    }
+  },
+  "required": [
+    "timestamp",
+    "setting_id",
+    "setting_type",
+    "action"
+  ],
+  "examples": [
+    {
+      "timestamp": 1717330000,
+      "action": "get_response",
+      "setting_id": "set_1003",
+      "setting_type": "sensor",
+      "imu_sample_rate": "60",
+      "imu_sleep_detect_timeout": "60",
+      "imu_detach_detect_timeout": "60",
+      "bme_enable": "true",
+      "temp_max_value": "60"
+    }
+  ]
+}

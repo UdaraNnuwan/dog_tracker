@@ -2,7 +2,7 @@
  * Minimal MQTT 3.1.1 packet codec (OASIS mqtt-v3.1.1, §2–§3).
  *
  * Covers only what the bridge needs: CONNECT/CONNACK, PUBLISH (QoS 0/1), PUBACK,
- * SUBSCRIBE/SUBACK, PINGREQ/PINGRESP, DISCONNECT. QoS 2 is not used (spec §10) and is
+ * SUBSCRIBE/SUBACK, PINGREQ/PINGRESP, DISCONNECT. QoS 2 is not used (spec V3: QoS 0 and 1 only) and is
  * rejected as a protocol error. Pure functions only; see ADR 0001 for why this is not mqtt.js.
  */
 

@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SimDevice, type DeviceOptions, type PublishOptions } from "../src/device.js";
 
 interface Sent {
+  /** Topic after `pettracker/{id}/`, e.g. `backend/telemetry/gps`. */
   path: string;
   payload: Record<string, unknown>;
   opts: PublishOptions;
 }
 
 const ID = "sim01";
+const PREFIX = `pettracker/${ID}/`;
 const base: DeviceOptions = {
   deviceId: ID,
   home: { latitude: 6.9271, longitude: 79.8612 },
@@ -22,23 +24,27 @@ function setup(opts: Partial<DeviceOptions> = {}, random = () => 0.5) {
   const sent: Sent[] = [];
   const device = new SimDevice(
     { ...base, ...opts },
-    { publish: (path, payload, o) => sent.push({ path, payload, opts: o }), log: () => {}, random },
+    {
+      publish: (topic, payload, o) => {
+        expect(topic.startsWith(PREFIX)).toBe(true);
+        sent.push({ path: topic.slice(PREFIX.length), payload, opts: o });
+      },
+      log: () => {},
+      random,
+    },
   );
-  const command = (path: string, body: Record<string, unknown>) => {
-    device.handleMessage(
-      `pettracker/device/${ID}/${path}`,
-      JSON.stringify({ timestamp: 1, ...body }),
-    );
+  const send = (path: string, body: Record<string, unknown>) => {
+    device.handleMessage(`${PREFIX}device/${path}`, JSON.stringify({ timestamp: 1, ...body }));
     vi.advanceTimersByTime(1);
   };
   const last = (path: string) => sent.filter((s) => s.path === path).at(-1)?.payload;
-  return { device, sent, command, last };
+  return { device, sent, send, last };
 }
 
 /** Every published payload must pass the same contract validation as the bridge. */
 function expectValid(sent: Sent[]) {
   for (const s of sent) {
-    const r = parseInbound(`pettracker/backend/${ID}/${s.path}`, JSON.stringify(s.payload));
+    const r = parseInbound(`${PREFIX}${s.path}`, JSON.stringify(s.payload));
     expect(r.ok, `${s.path}: ${JSON.stringify(r)}`).toBe(true);
   }
 }
@@ -47,20 +53,21 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("SimDevice", () => {
-  it("announces itself on start with a retained online state (spec §11)", () => {
+  it("announces itself on start with a retained online state (ADR 0011)", () => {
     const { device, sent } = setup();
     device.start();
     expect(sent[0]).toMatchObject({
-      path: "status/connectivity",
+      path: "backend/status/connectivity",
       payload: { status: "online" },
       opts: { qos: 1, retain: true },
     });
     expect(sent.map((s) => s.path)).toEqual(
       expect.arrayContaining([
-        "status/system",
-        "status/network",
-        "telemetry/gps",
-        "telemetry/battery",
+        "backend/status/system",
+        "backend/status/network",
+        "backend/telemetry/gps",
+        "backend/telemetry/battery",
+        "backend/telemetry/bme_data",
       ]),
     );
     expectValid(sent);
@@ -72,23 +79,10 @@ describe("SimDevice", () => {
     device.start();
     const before = sent.length;
     vi.advanceTimersByTime(5_000 * 50);
-    const telemetry = sent.slice(before).filter((s) => s.path.startsWith("telemetry/"));
-    expect(telemetry).toHaveLength(4 * 50);
+    const telemetry = sent.slice(before).filter((s) => s.path.startsWith("backend/telemetry/"));
+    expect(telemetry).toHaveLength(5 * 50);
     expect(telemetry.every((s) => s.opts.qos === 0 && !s.opts.retain)).toBe(true);
     expectValid(sent);
-    device.stop();
-  });
-
-  it("reports battery temperature in a plausible range", () => {
-    const { device, sent } = setup({}, Math.random);
-    device.start();
-    vi.advanceTimersByTime(5_000 * 200);
-    const temps = sent
-      .filter((s) => s.path === "telemetry/battery")
-      .map((s) => s.payload.temperature as number);
-    expect(temps.length).toBeGreaterThan(100);
-    expect(Math.min(...temps)).toBeGreaterThan(20);
-    expect(Math.max(...temps)).toBeLessThan(45);
     device.stop();
   });
 
@@ -97,85 +91,116 @@ describe("SimDevice", () => {
     device.start();
     device.stop();
     expect(sent.at(-1)).toMatchObject({
-      path: "status/connectivity",
+      path: "backend/status/connectivity",
       payload: { status: "offline" },
       opts: { retain: true },
     });
   });
 
   it("answers location with the current fix", () => {
-    const { command, last, sent } = setup();
-    command("command/location", { request_id: "r1" });
-    expect(last("response/location")).toMatchObject({ request_id: "r1", status: "success" });
-    expect(last("response/location")).toHaveProperty("latitude");
+    const { send, last, sent } = setup();
+    send("command/location", { request_id: "r1", action: "get_current_location" });
+    expect(last("backend/response/location")).toMatchObject({
+      request_id: "r1",
+      status: "success",
+      location: { fix_valid: true },
+    });
     expectValid(sent);
   });
 
-  it("rejects commands with an invalid payload", () => {
-    const { command, last } = setup();
-    command("command/buzzer", { request_id: "r1", enabled: "yes" });
-    expect(last("response/buzzer")).toMatchObject({
-      status: "rejected",
-      error_code: "invalid_payload",
-    });
+  it("echoes buzzer, peripheral and sleep parameters", () => {
+    const { send, last, sent } = setup();
+    send("command/buzzer", { request_id: "b", enabled: true, duration_ms: 1500 });
+    send("command/peripheral", { request_id: "p", peripheral: "speaker", enabled: false });
+    send("command/sleep", { request_id: "s", action: "enter_sleep", duration_seconds: 600 });
+    expect(last("backend/response/buzzer")).toMatchObject({ enabled: true, duration_ms: 1500 });
+    expect(last("backend/response/peripheral")).toMatchObject({ peripheral: "speaker" });
+    expect(last("backend/response/sleep")).toMatchObject({ duration_seconds: 600 });
+    expect(last("backend/status/system")).toMatchObject({ device_state: "sleep" });
+    expectValid(sent);
   });
 
-  it("returns the cached result for a repeated request_id (spec §7.4)", () => {
+  it("answers invalid commands with an error", () => {
+    const { send, last } = setup();
+    send("command/buzzer", { request_id: "r1", enabled: "yes" });
+    expect(last("backend/response/buzzer")).toMatchObject({ status: "error" });
+    send("command/reboot", { request_id: "r2", reboot_enable: "yes" });
+    expect(last("backend/response/reboot")).toMatchObject({ status: "rejected" });
+  });
+
+  it("returns the cached result for a repeated request_id", () => {
     let roll = 0.9;
-    const { command, sent } = setup({ failRate: 0.5 }, () => roll);
-    command("command/buzzer", { request_id: "r1", enabled: true, duration: 3 });
+    const { send, sent } = setup({ failRate: 0.5 }, () => roll);
+    send("command/buzzer", { request_id: "r1", enabled: true, duration_ms: 3000 });
     roll = 0; // would fail now, but a repeat must not re-run the action
-    command("command/buzzer", { request_id: "r1", enabled: true, duration: 3 });
-    const responses = sent.filter((s) => s.path === "response/buzzer").map((s) => s.payload.status);
-    expect(responses).toEqual(["success", "success"]);
+    send("command/buzzer", { request_id: "r1", enabled: true, duration_ms: 3000 });
+    const statuses = sent
+      .filter((s) => s.path === "backend/response/buzzer")
+      .map((s) => s.payload.status);
+    expect(statuses).toEqual(["success", "success"]);
   });
 
   it("can fail and duplicate responses on purpose", () => {
-    const { command, sent } = setup({ failRate: 1, duplicateRate: 1 });
-    command("command/reboot", { request_id: "r1" });
+    const { send, sent } = setup({ failRate: 1, duplicateRate: 1 });
+    send("command/reboot", { request_id: "r1", reboot_enable: true });
     vi.advanceTimersByTime(200);
-    const responses = sent.filter((s) => s.path === "response/reboot");
+    const responses = sent.filter((s) => s.path === "backend/response/reboot");
     expect(responses).toHaveLength(2);
-    expect(responses[0]?.payload).toMatchObject({ status: "failed", error_code: "reboot_failed" });
+    expect(responses[0]?.payload).toMatchObject({ status: "rejected" });
     expectValid(sent);
   });
 
-  it("applies gps_interval and reschedules telemetry", () => {
-    const { device, command, last, sent } = setup();
+  it("acknowledges a SET on device/settings/ack and reschedules telemetry", () => {
+    const { device, send, last, sent } = setup();
     device.start();
-    command("settings/set/gps_interval", { request_id: "s1", value: 60 });
-    expect(last("settings/response/gps_interval")).toMatchObject({ status: "success", value: 60 });
+    send("settings/set/gps_settings", {
+      action: "set",
+      setting_id: "s1",
+      setting_type: "gps",
+      gps_interval: "60",
+    });
+    expect(last("device/settings/ack/gps_settings")).toMatchObject({
+      action: "ack",
+      setting_id: "s1",
+      setting_type: "gps",
+    });
     expect(device.tickMs).toBe(60_000);
 
-    command("settings/get/gps_interval", { request_id: "s2" });
-    expect(last("settings/response/gps_interval")).toMatchObject({ request_id: "s2", value: 60 });
+    send("settings/get/gps_settings", { action: "get", setting_id: "s2", setting_type: "gps" });
+    expect(last("backend/settings/response/gps_settings")).toMatchObject({
+      action: "get_response",
+      setting_id: "s2",
+      gps_interval: 60,
+      gps_enabled: true,
+    });
 
-    const before = sent.filter((s) => s.path === "telemetry/gps").length;
+    const gps = () => sent.filter((s) => s.path === "backend/telemetry/gps").length;
+    const before = gps();
     vi.advanceTimersByTime(60_000);
-    expect(sent.filter((s) => s.path === "telemetry/gps").length - before).toBe(1);
+    expect(gps() - before).toBe(1);
     expectValid(sent);
     device.stop();
   });
 
-  it("fails out-of-range and unsupported settings", () => {
-    const { command, last } = setup();
-    command("settings/set/gps_interval", { request_id: "s1", value: 5 });
-    expect(last("settings/response/gps_interval")).toMatchObject({
-      status: "failed",
-      error_code: "invalid_range",
+  it("does not acknowledge an invalid SET or an unknown group", () => {
+    const { send, sent } = setup();
+    send("settings/set/gps_settings", {
+      action: "set",
+      setting_id: "s1",
+      setting_type: "gps",
+      gps_interval: 0,
     });
-    command("settings/set/led_colour", { request_id: "s2", value: "red" });
-    expect(last("settings/response/led_colour")).toMatchObject({
-      status: "unsupported",
-      error_code: "unsupported_setting",
-    });
+    send("settings/set/led_colour", { action: "set", setting_id: "s2", value: "red" });
+    expect(sent).toEqual([]);
   });
 
-  it("ignores other devices, non-JSON and messages without request_id", () => {
+  it("ignores other devices, its own ACKs, non-JSON and messages without an id", () => {
     const { device, sent } = setup();
-    device.handleMessage("pettracker/device/sim02/command/reboot", '{"request_id":"r"}');
-    device.handleMessage(`pettracker/device/${ID}/command/reboot`, "nope");
-    device.handleMessage(`pettracker/device/${ID}/command/reboot`, '{"timestamp":1}');
+    device.handleMessage("pettracker/sim02/device/command/reboot", '{"request_id":"r"}');
+    device.handleMessage(`${PREFIX}device/settings/ack/gps_settings`, '{"setting_id":"s"}');
+    device.handleMessage(`${PREFIX}device/command/reboot`, "nope");
+    device.handleMessage(`${PREFIX}device/command/reboot`, '{"timestamp":1}');
+    device.handleMessage(`${PREFIX}device/settings/get/gps_settings`, '{"request_id":"r"}');
     vi.advanceTimersByTime(10);
     expect(sent).toEqual([]);
   });
@@ -185,11 +210,11 @@ describe("SimDevice", () => {
     device.start();
     // ~1000 ticks: the dog leaves the 150 m fence and the battery drains below 15 %.
     vi.advanceTimersByTime(5_000 * 1000);
-    const events = sent.filter((s) => s.path.startsWith("event/"));
-    expect(events.some((e) => e.path === "event/geofence" && e.payload.event === "exit")).toBe(
-      true,
-    );
-    expect(events.some((e) => e.path === "event/low_battery")).toBe(true);
+    const events = sent.filter((s) => s.path.startsWith("backend/event/"));
+    expect(
+      events.some((e) => e.path === "backend/event/geofence" && e.payload.out_status === true),
+    ).toBe(true);
+    expect(events.some((e) => e.path === "backend/event/low_battery")).toBe(true);
     expect(events.every((e) => e.opts.qos === 1)).toBe(true);
     expectValid(sent);
     device.stop();
