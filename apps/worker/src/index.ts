@@ -28,13 +28,17 @@ import { clientCertOf, collarFromCert, type CollarAuth } from "./firmware/client
 import {
   activateRelease,
   activeRelease,
+  completionStream,
+  contentRangeStart,
   createRelease,
   deleteRelease,
   FirmwareNotSetUp,
   listReleases,
   parseUpload,
+  recordDownload,
   releaseByVersion,
   signedFileUrl,
+  type DownloadState,
 } from "./firmware/releases.js";
 import { log } from "./log.js";
 import { listDevices, parseHistoryQuery, queryHistory } from "./storage/history.js";
@@ -476,11 +480,37 @@ app.get("/firmware/download/:version", async (c) => {
     });
     return c.json({ error: "download_failed" }, 502);
   }
+  const deviceId = c.get("deviceId");
   log("info", "firmware download", {
-    ...deviceField(c.get("deviceId")),
+    ...deviceField(deviceId),
     version: release.version,
     ...(range ? { range } : {}),
   });
+  let body = upstream.body;
+  if (deviceId) {
+    // The collar's state in the Firmware tab: downloading now, downloaded after the last byte.
+    const record = (state: DownloadState) =>
+      recordDownload(db, deviceId, release.version, state).catch((err: unknown) =>
+        log("error", "firmware download state not saved", {
+          device_id: deviceId,
+          version: release.version,
+          state,
+          error: String(err),
+        }),
+      );
+    const started = record("downloading");
+    background(c, started);
+    const offset = contentRangeStart(upstream.headers.get("Content-Range"));
+    body = body.pipeThrough(
+      completionStream(offset, release.size_bytes, () => {
+        log("info", "firmware downloaded", { device_id: deviceId, version: release.version });
+        background(
+          c,
+          started.then(() => record("downloaded")),
+        );
+      }),
+    );
+  }
   const headers = new Headers({
     "Content-Type": "application/octet-stream",
     "Content-Disposition": `attachment; filename="${release.file_name}"`,
@@ -492,8 +522,20 @@ app.get("/firmware/download/:version", async (c) => {
     const v = upstream.headers.get(h);
     if (v) headers.set(h, v);
   }
-  return new Response(upstream.body, { status: upstream.status, headers });
+  return new Response(body, { status: upstream.status, headers });
 });
+
+/** Runs `work` after the response; tests call the app without an execution context. */
+function background(
+  c: { readonly executionCtx: { waitUntil(p: Promise<unknown>): void } },
+  work: Promise<unknown>,
+) {
+  try {
+    c.executionCtx.waitUntil(work);
+  } catch {
+    void work;
+  }
+}
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 

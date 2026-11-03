@@ -120,6 +120,9 @@ export type Database = {
           battery_percent: number | null;
           connectivity: string | null;
           connectivity_at: string | null;
+          firmware_download_at: string | null;
+          firmware_download_state: string | null;
+          firmware_download_version: string | null;
           firmware_version: string | null;
           first_seen_at: string;
           id: string;
@@ -136,6 +139,9 @@ export type Database = {
           battery_percent?: number | null;
           connectivity?: string | null;
           connectivity_at?: string | null;
+          firmware_download_at?: string | null;
+          firmware_download_state?: string | null;
+          firmware_download_version?: string | null;
           firmware_version?: string | null;
           first_seen_at?: string;
           id: string;
@@ -152,6 +158,9 @@ export type Database = {
           battery_percent?: number | null;
           connectivity?: string | null;
           connectivity_at?: string | null;
+          firmware_download_at?: string | null;
+          firmware_download_state?: string | null;
+          firmware_download_version?: string | null;
           firmware_version?: string | null;
           first_seen_at?: string;
           id?: string;

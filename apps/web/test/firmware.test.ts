@@ -21,4 +21,14 @@ describe("firmware tab", () => {
     expect(collarFirmwareState(null, "1.1.0")).toBe("unknown");
     expect(collarFirmwareState("1.0.0", null)).toBe("none");
   });
+
+  it("follows the collar's download until it reports the new version", () => {
+    const dl = (version: string, state: string) => ({ version, state });
+    expect(collarFirmwareState("1.0.0", "1.1.0", dl("1.1.0", "downloading"))).toBe("downloading");
+    expect(collarFirmwareState("1.0.0", "1.1.0", dl("1.1.0", "downloaded"))).toBe("downloaded");
+    expect(collarFirmwareState(null, "1.1.0", dl("1.1.0", "downloaded"))).toBe("downloaded");
+    expect(collarFirmwareState("1.1.0", "1.1.0", dl("1.1.0", "downloaded"))).toBe("current");
+    // A download of another release doesn't count.
+    expect(collarFirmwareState("1.0.0", "1.1.0", dl("1.0.5", "downloaded"))).toBe("update");
+  });
 });

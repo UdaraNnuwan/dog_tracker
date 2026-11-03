@@ -13,17 +13,35 @@ export function versionFromFileName(name: string): string | null {
   return /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)/.exec(base)?.[1] ?? null;
 }
 
-export type CollarFirmwareState = "current" | "update" | "unknown" | "none";
+export type CollarFirmwareState =
+  | "current"
+  | "update"
+  | "downloading"
+  | "downloaded"
+  | "unknown"
+  | "none";
+
+/** The collar's last download, as the Worker records it on `devices`. */
+export interface CollarDownload {
+  version: string | null;
+  state: string | null;
+}
 
 /**
- * What a collar will do on its next check: `update` when its reported version differs from
- * the active release (ADR 0012), `unknown` before it has reported one, `none` with no release.
+ * Where a collar is with the active release (ADR 0012): `current` once it reports that
+ * version; `downloading` / `downloaded` while it fetches it and until it reports it
+ * installed; `update` when it will fetch it on its next check; `unknown` before it has
+ * reported a version; `none` with no release.
  */
 export function collarFirmwareState(
   reported: string | null,
   active: string | null,
+  download: CollarDownload = { version: null, state: null },
 ): CollarFirmwareState {
   if (active === null) return "none";
+  if (reported && !needsUpdate(reported, active)) return "current";
+  if (download.version === active && download.state === "downloaded") return "downloaded";
+  if (download.version === active && download.state === "downloading") return "downloading";
   if (!reported) return "unknown";
-  return needsUpdate(reported, active) ? "update" : "current";
+  return "update";
 }

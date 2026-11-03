@@ -36,6 +36,13 @@ unchanged. The owner chose to authenticate collars with client certificates issu
     through so a collar can resume. The Worker fetches it from Storage with a 60 s signed URL,
     so the collar talks to one host only.
   - The collar must verify the SHA-256 before flashing.
+- **Download state per collar** (migration `20261103100000_firmware_download_state.sql`): when an
+  identified collar downloads, the Worker sets `devices.firmware_download_state = downloading`
+  (with `firmware_download_version` and `_at`), then `downloaded` once the file's last byte has
+  been streamed (a resumed `Range` download counts from its start offset; an aborted one stays
+  `downloading`). The Collars view shows downloading → downloaded, waiting to install → up to
+  date when `status/system.firmware_version` reports the downloaded version. Local downloads
+  without `device_id` aren't recorded.
 - **Collar identity: mTLS client certificates.** Each collar holds a certificate signed by our CA,
   with **subject CN = device_id**. Cloudflare verifies it on the custom hostname and reports the
   result in `request.cf.tlsClientAuth`. The Worker (`src/firmware/clientCert.ts`) accepts only

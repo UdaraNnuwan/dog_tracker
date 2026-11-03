@@ -2,7 +2,13 @@ import { env } from "cloudflare:test";
 import { FIRMWARE_MAX_BYTES } from "@udara/contracts";
 import { describe, expect, it } from "vitest";
 import { collarFromCert, commonName, type ClientCertInfo } from "../src/firmware/clientCert.js";
-import { parseUpload, safeFileName, sha256Hex } from "../src/firmware/releases.js";
+import {
+  completionStream,
+  contentRangeStart,
+  parseUpload,
+  safeFileName,
+  sha256Hex,
+} from "../src/firmware/releases.js";
 
 const cert = (over: Partial<ClientCertInfo> = {}): ClientCertInfo => ({
   certPresented: "1",
@@ -107,6 +113,35 @@ describe("firmware upload form", () => {
     expect(await sha256Hex(abc)).toBe(
       "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     );
+  });
+});
+
+describe("firmware download state", () => {
+  it("reads where a resumed download starts", () => {
+    expect(contentRangeStart(null)).toBe(0);
+    expect(contentRangeStart("bytes 100-199/200")).toBe(100);
+    expect(contentRangeStart("bytes 0-99/*")).toBe(0);
+    expect(contentRangeStart("garbage")).toBe(0);
+  });
+
+  const stream = async (offset: number, size: number, chunks: number[], abort = false) => {
+    let completed = false;
+    const t = completionStream(offset, size, () => (completed = true));
+    const writer = t.writable.getWriter();
+    const reading = new Response(t.readable).arrayBuffer().catch(() => null);
+    for (const n of chunks) await writer.write(new Uint8Array(n));
+    if (abort) await writer.abort("collar went away");
+    else await writer.close();
+    await reading;
+    return completed;
+  };
+
+  it("completes only after the file's last byte", async () => {
+    expect(await stream(0, 10, [4, 6])).toBe(true);
+    expect(await stream(0, 10, [4])).toBe(false);
+    // Resumed with Range: bytes 6-9.
+    expect(await stream(6, 10, [4])).toBe(true);
+    expect(await stream(0, 10, [4, 6], true)).toBe(false);
   });
 });
 

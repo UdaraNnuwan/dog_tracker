@@ -20,6 +20,8 @@ import { collarFirmwareState, formatBytes, versionFromFileName } from "./status.
 const STATE_LABEL = {
   current: { text: "up to date", pill: "ok" },
   update: { text: "will update", pill: "warn" },
+  downloading: { text: "downloading", pill: "warn" },
+  downloaded: { text: "downloaded, waiting to install", pill: "warn" },
   unknown: { text: "version not reported yet", pill: "unknown" },
   none: { text: "no active release", pill: "unknown" },
 } as const;
@@ -221,19 +223,23 @@ export function FirmwareView() {
                 <tr>
                   <th>Device</th>
                   <th>Reported firmware</th>
-                  <th>Next check</th>
+                  <th>Update</th>
+                  <th>Last download</th>
                 </tr>
               </thead>
               <tbody>
                 {devices.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="muted">
+                    <td colSpan={4} className="muted">
                       No collars stored yet.
                     </td>
                   </tr>
                 )}
                 {devices.map((d) => {
-                  const state = collarFirmwareState(d.firmware_version, active?.version ?? null);
+                  const state = collarFirmwareState(d.firmware_version, active?.version ?? null, {
+                    version: d.firmware_download_version,
+                    state: d.firmware_download_state,
+                  });
                   const label = STATE_LABEL[state];
                   return (
                     <tr key={d.id}>
@@ -241,8 +247,22 @@ export function FirmwareView() {
                       <td>{d.firmware_version ?? "—"}</td>
                       <td>
                         <span className={`pill ${label.pill}`}>{label.text}</span>
-                        {state === "update" && active && (
-                          <span className="muted"> → {active.version}</span>
+                        {(state === "update" ||
+                          state === "downloading" ||
+                          state === "downloaded") &&
+                          active && <span className="muted"> → {active.version}</span>}
+                      </td>
+                      <td>
+                        {d.firmware_download_version && d.firmware_download_at ? (
+                          <>
+                            {d.firmware_download_version} · {d.firmware_download_state}
+                            <span className="muted">
+                              {" "}
+                              · {new Date(d.firmware_download_at).toLocaleString()}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="muted">—</span>
                         )}
                       </td>
                     </tr>

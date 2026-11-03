@@ -175,6 +175,54 @@ export async function deleteRelease(db: Db, id: string): Promise<boolean> {
   return true;
 }
 
+/** Per-collar download progress on `devices` (migration 20261103100000). */
+export type DownloadState = "downloading" | "downloaded";
+
+export async function recordDownload(
+  db: Db,
+  deviceId: string,
+  version: string,
+  state: DownloadState,
+): Promise<void> {
+  const { error } = await db
+    .from("devices")
+    .update({
+      firmware_download_version: version,
+      firmware_download_state: state,
+      firmware_download_at: new Date().toISOString(),
+    })
+    .eq("id", deviceId);
+  if (error) throw new Error(error.message);
+}
+
+/** First byte a response carries: `bytes 100-199/200` → 100; a full response starts at 0. */
+export function contentRangeStart(contentRange: string | null): number {
+  const start = contentRange && /^bytes (\d+)-\d+\/(?:\d+|\*)$/.exec(contentRange.trim())?.[1];
+  return start ? Number(start) : 0;
+}
+
+/**
+ * Passes the file through and calls `onComplete` once it has streamed the file's last byte,
+ * counting from `offset` (a resumed Range download). A download the collar aborts never
+ * completes.
+ */
+export function completionStream(
+  offset: number,
+  size: number,
+  onComplete: () => void,
+): TransformStream<Uint8Array, Uint8Array> {
+  let bytes = 0;
+  return new TransformStream({
+    transform(chunk, controller) {
+      bytes += chunk.byteLength;
+      controller.enqueue(chunk);
+    },
+    flush() {
+      if (offset + bytes >= size) onComplete();
+    },
+  });
+}
+
 /** Short-lived URL the Worker fetches to stream a download to the collar. */
 export async function signedFileUrl(db: Db, release: FirmwareRelease): Promise<string> {
   const { data, error } = await db.storage
