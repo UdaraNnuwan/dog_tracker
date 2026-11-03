@@ -1,5 +1,5 @@
 import { readFile, readdir } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildJsonSchemas, serialiseSchema } from "../src/jsonSchema.js";
 
@@ -7,7 +7,10 @@ const dir = join(import.meta.dirname, "..", "json-schema");
 
 async function listFiles(root: string): Promise<string[]> {
   const entries = await readdir(root, { withFileTypes: true, recursive: true });
-  return entries.filter((e) => e.isFile()).map((e) => relative(root, join(e.parentPath, e.name)));
+  // Generated keys use "/"; Windows paths use "\\".
+  return entries
+    .filter((e) => e.isFile())
+    .map((e) => relative(root, join(e.parentPath, e.name)).split(sep).join("/"));
 }
 
 describe("committed JSON Schemas", () => {
