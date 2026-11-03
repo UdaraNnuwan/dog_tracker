@@ -30,7 +30,8 @@ unchanged. The owner chose to authenticate collars with client certificates issu
     `{update: true, version, size_bytes, sha256, download_url}`.
   - `GET /api/firmware/latest` (`device_id` optional) → the active release without a version
     comparison: `{version, size_bytes, sha256, uploaded_at, download_url}`, or
-    `{version: null}` when none is active.
+    `{version: null}` when none is active. **Public** (no credentials): it only describes the
+    release, and downloading it still needs collar credentials.
   - `GET /api/firmware/download/{version}?device_id=…` streams the file
     (`application/octet-stream`, `X-Firmware-Version`, `X-Firmware-SHA256`), passing `Range`
     through so a collar can resume. The Worker fetches it from Storage with a 60 s signed URL,
@@ -51,9 +52,15 @@ unchanged. The owner chose to authenticate collars with client certificates issu
   exist in `devices`, meaning it has published over MQTT before (rule 4). Refusals are `401`
   (`client_certificate_required` / `_invalid` / `_no_device`, `device_mismatch`) and `403`
   (`unknown_device`).
+- **Collar key (hosts without mTLS, e.g. `*.workers.dev`).** `check` and `download` also accept
+  the header `X-Collar-Key: <COLLAR_API_KEY>` (Worker secret, compared in constant time) with
+  `device_id` in the query, which must be a known device. Refusals: `401 invalid_collar_key`,
+  `401 device_id_required`. Weaker than certificates: one shared key for every collar, and the
+  device id is claimed, not proven, so a leaked key exposes the firmware file and lets anyone
+  report download state for any known device. Rotate it with `wrangler secret put
+  COLLAR_API_KEY` (and in the collars); move to mTLS once a custom domain exists.
 - **Local development** (`LIVE_VIEW_UNAUTHENTICATED=true` on localhost, ADR 0004) has no mTLS,
-  so it trusts `device_id` from the query instead. `latest` and `download` also work without
-  one there; deployed, the client certificate is always required.
+  so it trusts `device_id` from the query instead. `download` also works without one there.
 - **Dashboard API** (admin only, `403 forbidden` for other users):
   `GET/POST /api/firmware/releases`, `DELETE /api/firmware/releases/{id}`,
   `PUT /api/firmware/active {id | null}`. Uploads, activations and deletions are logged at `warn`
@@ -72,9 +79,9 @@ mTLS works only on a **custom domain** in a Cloudflare zone, not on `*.workers.d
    Cloudflare-managed CA, one certificate per collar with CN = device_id), or upload our own CA
    through the mTLS certificates API and associate it with the hostname.
 3. Enable mTLS for the hostname (SSL/TLS → Client Certificates → Hosts).
-4. Optional defence in depth: a WAF custom rule that blocks
+4. Optional defence in depth, once every collar has a certificate (it also blocks the collar
+   key): a WAF custom rule that blocks
    `starts_with(http.request.uri.path, "/api/firmware/check") or
-   starts_with(http.request.uri.path, "/api/firmware/latest") or
    starts_with(http.request.uri.path, "/api/firmware/download")` when
    `not cf.tls_client_auth.cert_verified`. The Worker checks the certificate itself either way.
 5. Revoke a lost collar's certificate in Cloudflare; the Worker then refuses it

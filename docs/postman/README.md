@@ -108,7 +108,9 @@ The **Firmware** folder needs an admin user. **Upload release**: set `firmwareVe
 (SemVer, e.g. `1.0.1`), pick the binary for `file` in the Body tab, then Send; the new id is
 saved in `releaseId` for **Activate** / **Delete**. **Collar: check**, **Collar: latest
 version** (`GET /api/firmware/latest`, the active release without a version comparison) and
-**Collar: download** are what a collar calls. On a deployed Worker they need the collar's mTLS
-client certificate (Postman **Settings → Certificates**, CN = device_id); on localhost with
+**Collar: download** are what a collar calls. **latest** is public. On a deployed Worker,
+**check** and **download** need the `collarKey` variable (the Worker's `COLLAR_API_KEY`, sent as
+`X-Collar-Key`) or the collar's mTLS client certificate on a custom domain (Postman
+**Settings → Certificates**, CN = device_id); on localhost with
 `LIVE_VIEW_UNAUTHENTICATED=true` the `device_id` query parameter is enough. The device must
 have published over MQTT before (else `403 unknown_device`).

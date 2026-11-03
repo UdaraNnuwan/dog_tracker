@@ -24,7 +24,12 @@ import {
 } from "./auth/session.js";
 import { BRIDGE_ID } from "./bridge/MqttBridge.js";
 import type { Env } from "./env.js";
-import { clientCertOf, collarFromCert, type CollarAuth } from "./firmware/clientCert.js";
+import {
+  clientCertOf,
+  collarFromCert,
+  collarFromKey,
+  type CollarAuth,
+} from "./firmware/clientCert.js";
 import {
   activateRelease,
   activeRelease,
@@ -378,7 +383,8 @@ const collarOnly: MiddlewareHandler<AppEnv> = async (c, next) => {
     ? claimed && isValidDeviceId(claimed)
       ? { ok: true, deviceId: claimed }
       : { ok: false, reason: "client_certificate_no_device" }
-    : collarFromCert(clientCertOf(c.req.raw), claimed);
+    : (collarFromKey(c.req.header("X-Collar-Key"), c.env.COLLAR_API_KEY, claimed) ??
+      collarFromCert(clientCertOf(c.req.raw), claimed));
   if (!auth.ok) {
     log("warn", "firmware request refused", {
       reason: auth.reason,
@@ -401,16 +407,15 @@ const collarOnly: MiddlewareHandler<AppEnv> = async (c, next) => {
 
 app.use("/firmware/check", collarOnly);
 /**
- * `device_id` is optional for the latest version and the download: deployed, the certificate
- * identifies the collar anyway; local development then skips identification.
+ * `device_id` is optional for the download: deployed, the certificate identifies the collar
+ * anyway; local development then skips identification. `/firmware/latest` is public.
  */
 const collarOptional: MiddlewareHandler<AppEnv> = (c, next) =>
   isLocalDev(c) && !c.req.query("device_id") ? next() : collarOnly(c, next);
 
-app.use("/firmware/latest", collarOptional);
 app.use("/firmware/download/*", collarOptional);
 
-/** Where a collar downloads `version`: same host, so the same client certificate applies. */
+/** Where a collar downloads `version`: same host, so the same credentials apply. */
 const downloadUrl = (reqUrl: string, version: string, deviceId?: string) => {
   const url = new URL(`/api/firmware/download/${encodeURIComponent(version)}`, reqUrl);
   if (deviceId) url.searchParams.set("device_id", deviceId);
@@ -445,9 +450,14 @@ app.get("/firmware/check", async (c) => {
   } satisfies FirmwareCheckResponse);
 });
 
-/** `GET /api/firmware/latest[?device_id=…]` → `FirmwareLatestResponse` (the active release). */
+/**
+ * `GET /api/firmware/latest[?device_id=…]` → `FirmwareLatestResponse` (the active release).
+ * Public: it only describes the release; downloading it needs collar credentials. A valid
+ * `device_id` is carried into `download_url` but not verified here.
+ */
 app.get("/firmware/latest", async (c) => {
-  const deviceId = c.get("deviceId");
+  const claimed = c.req.query("device_id");
+  const deviceId = claimed && isValidDeviceId(claimed) ? claimed : undefined;
   const db = serviceClient(c.env);
   if (!db) return c.json(storageMissing, 503);
   const active = await activeRelease(db);

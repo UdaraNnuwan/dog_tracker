@@ -36,6 +36,10 @@
     {
       "key": "releaseId",
       "value": ""
+    },
+    {
+      "key": "collarKey",
+      "value": ""
     }
   ],
   "item": [
@@ -696,7 +700,7 @@
     },
     {
       "name": "Firmware (ADR 0012)",
-      "description": "Admin: upload, list, activate and delete releases (role admin). Collar: check and download, identified by its mTLS client certificate (CN = device_id). Without a client certificate the collar requests only work on localhost with LIVE_VIEW_UNAUTHENTICATED=true, where `device_id` is taken from the query. The device must be known (it has published over MQTT before).",
+      "description": "Admin: upload, list, activate and delete releases (role admin). Collar: `latest` is public; `check` and `download` need the header `X-Collar-Key: {{collarKey}}` (works on workers.dev) or the collar's mTLS client certificate (custom domain, CN = device_id). On localhost with LIVE_VIEW_UNAUTHENTICATED=true, `device_id` in the query is enough. The device must be known (it has published over MQTT before).",
       "item": [
         {
           "name": "List releases",
@@ -867,7 +871,13 @@
               "type": "noauth"
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Collar-Key",
+                "value": "{{collarKey}}",
+                "description": "Shared collar key (COLLAR_API_KEY secret). Not needed with a client certificate or on localhost."
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/firmware/check?device_id={{deviceId}}&version=1.0.0",
               "host": [
@@ -912,7 +922,7 @@
                 "latest"
               ]
             },
-            "description": "The release offered to collars (the active one): `{version, size_bytes, sha256, uploaded_at, download_url}`, or `{version: null}` when none is active. No device_id needed: deployed, the client certificate identifies the collar; on localhost no identification is needed."
+            "description": "Public. The release offered to collars (the active one): `{version, size_bytes, sha256, uploaded_at, download_url}`, or `{version: null}` when none is active."
           }
         },
         {
@@ -922,7 +932,13 @@
               "type": "noauth"
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Collar-Key",
+                "value": "{{collarKey}}",
+                "description": "Shared collar key (COLLAR_API_KEY secret). Not needed with a client certificate or on localhost."
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/firmware/download/{{firmwareVersion}}?device_id={{deviceId}}",
               "host": [

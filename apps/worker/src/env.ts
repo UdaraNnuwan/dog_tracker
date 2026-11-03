@@ -18,4 +18,6 @@ export interface Env {
   // Supabase ingestion (phase 4). the secret key bypasses RLS: Worker-only, never in the frontend.
   SUPABASE_URL?: string;
   SUPABASE_SECRET_KEY?: string;
+  /** Shared key collars send as `X-Collar-Key` for firmware check/download (ADR 0012). */
+  COLLAR_API_KEY?: string;
 }

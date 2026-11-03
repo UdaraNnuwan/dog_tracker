@@ -1,7 +1,12 @@
 import { env } from "cloudflare:test";
 import { FIRMWARE_MAX_BYTES } from "@udara/contracts";
 import { describe, expect, it } from "vitest";
-import { collarFromCert, commonName, type ClientCertInfo } from "../src/firmware/clientCert.js";
+import {
+  collarFromCert,
+  collarFromKey,
+  commonName,
+  type ClientCertInfo,
+} from "../src/firmware/clientCert.js";
 import {
   completionStream,
   contentRangeStart,
@@ -60,6 +65,26 @@ describe("collar client certificates", () => {
     ["another device's id", cert(), "collar-02", "device_mismatch"],
   ])("refuses %s", (_name, c, claimed, reason) => {
     expect(collarFromCert(c, claimed)).toEqual({ ok: false, reason });
+  });
+});
+
+describe("collar key", () => {
+  const key = "s".repeat(32);
+  it("identifies the collar by device_id when the key matches", () => {
+    expect(collarFromKey(key, key, "collar-01")).toEqual({ ok: true, deviceId: "collar-01" });
+  });
+  it("falls back to the certificate check without a key", () => {
+    expect(collarFromKey(undefined, key, "collar-01")).toBeNull();
+    expect(collarFromKey("", key, "collar-01")).toBeNull();
+  });
+  it.each<[string, string, string | undefined, string | undefined, string]>([
+    ["a wrong key", "x", key, "collar-01", "invalid_collar_key"],
+    ["a longer key", key + "x", key, "collar-01", "invalid_collar_key"],
+    ["no key configured", key, undefined, "collar-01", "invalid_collar_key"],
+    ["no device_id", key, key, undefined, "device_id_required"],
+    ["an invalid device_id", key, key, "Collar 1", "device_id_required"],
+  ])("refuses %s", (_name, sent, expected, claimed, reason) => {
+    expect(collarFromKey(sent, expected, claimed)).toEqual({ ok: false, reason });
   });
 });
 
@@ -161,17 +186,40 @@ describe("firmware api", () => {
     }
   });
 
-  it("collar endpoints need a client certificate on a deployed hostname", async () => {
+  const collarPaths = [
+    "/api/firmware/check?device_id=collar-01&version=1.0.0",
+    "/api/firmware/download/1.0.0?device_id=collar-01",
+  ];
+
+  it("collar endpoints need a client certificate or the collar key on a deployed hostname", async () => {
     const { app } = await import("../src/index.js");
-    for (const path of [
-      "/api/firmware/check?device_id=collar-01&version=1.0.0",
-      "/api/firmware/latest?device_id=collar-01",
-      "/api/firmware/download/1.0.0?device_id=collar-01",
-    ]) {
+    for (const path of collarPaths) {
       const res = await app.request(`${remote}${path}`, {}, env);
       expect(res.status, path).toBe(401);
       expect(await res.json()).toEqual({ error: "client_certificate_required" });
     }
+  });
+
+  it("accepts the collar key instead of a certificate", async () => {
+    const { app } = await import("../src/index.js");
+    const keyed = { ...env, COLLAR_API_KEY: "k".repeat(32) };
+    const get = (path: string, key: string) =>
+      app.request(`${remote}${path}`, { headers: { "X-Collar-Key": key } }, keyed);
+    for (const path of collarPaths) {
+      const wrong = await get(path, "nope");
+      expect(wrong.status, path).toBe(401);
+      expect(await wrong.json()).toEqual({ error: "invalid_collar_key" });
+      // Accepted; storage is off in tests.
+      expect((await get(path, "k".repeat(32))).status, path).toBe(503);
+    }
+    const noDevice = await get("/api/firmware/download/1.0.0", "k".repeat(32));
+    expect(await noDevice.json()).toEqual({ error: "device_id_required" });
+  });
+
+  it("the latest version is public", async () => {
+    const { app } = await import("../src/index.js");
+    // No credentials: reaches storage (off in tests).
+    expect((await app.request(`${remote}/api/firmware/latest`, {}, env)).status).toBe(503);
   });
 
   it("local development identifies the collar by device_id", async () => {
@@ -183,9 +231,9 @@ describe("firmware api", () => {
     // Identified, but storage is off in tests.
     expect((await check("?device_id=collar-01&version=1.0.0")).status).toBe(503);
     const latest = (q: string) => app.request(`http://localhost/api/firmware/latest${q}`, {}, dev);
-    // device_id is optional for the latest version.
+    // Public: device_id is optional, and an invalid one is just left out of download_url.
     expect((await latest("")).status).toBe(503);
-    expect((await latest("?device_id=Not%20Valid")).status).toBe(401);
+    expect((await latest("?device_id=Not%20Valid")).status).toBe(503);
     expect((await latest("?device_id=collar-01")).status).toBe(503);
   });
 });

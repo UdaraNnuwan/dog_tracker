@@ -8,6 +8,8 @@ import { isValidDeviceId } from "@udara/contracts";
 export type CollarAuth = { ok: true; deviceId: string } | { ok: false; reason: CollarAuthError };
 
 export type CollarAuthError =
+  | "invalid_collar_key"
+  | "device_id_required"
   | "client_certificate_required"
   | "client_certificate_invalid"
   | "client_certificate_no_device"
@@ -49,6 +51,32 @@ export function collarFromCert(cert: ClientCertInfo | undefined, claimed?: strin
     return { ok: false, reason: "device_mismatch" };
   }
   return { ok: true, deviceId };
+}
+
+/**
+ * The shared collar key (`X-Collar-Key`), for hosts without mTLS such as workers.dev. The
+ * device is the one the request names; it can't be proven, unlike a certificate's CN.
+ * `null` when the request sends no key, so the certificate check applies instead.
+ */
+export function collarFromKey(
+  sent: string | undefined,
+  expected: string | undefined,
+  claimed: string | undefined,
+): CollarAuth | null {
+  if (!sent) return null;
+  if (!expected || !timingSafeEqual(sent, expected)) {
+    return { ok: false, reason: "invalid_collar_key" };
+  }
+  if (!claimed || !isValidDeviceId(claimed)) return { ok: false, reason: "device_id_required" };
+  return { ok: true, deviceId: claimed };
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
 }
 
 /** `cf.tlsClientAuth` of an incoming request (absent in tests and on workers.dev). */
