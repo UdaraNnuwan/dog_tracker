@@ -97,5 +97,18 @@ must be `ready` (`Status → Health`). Commands return the backend-generated `re
 `Status → Requests` shows whether the collar answered (10 s timeout, 2 retries, rule 3). For a collar
 that answers, run `pnpm sim --prefix <id>` and set `deviceId` to `<id>01`.
 
-Everything except `/api/health` needs `LIVE_VIEW_UNAUTHENTICATED=true` in `.dev.vars` and a
-`localhost` URL (ADR 0004, ADR 0009). Otherwise you get `401 auth_required`.
+Everything except `/api/health` needs a signed-in user: set `username` and `password`, run
+**Auth → Login** (it stores `accessToken`, sent as `Authorization: Bearer …` by every request),
+and **Auth → Refresh** when you get `401 auth_required` later. On a `localhost` URL with
+`LIVE_VIEW_UNAUTHENTICATED=true` in `.dev.vars` no login is needed (ADR 0004, ADR 0010).
+
+### Firmware (ADR 0012)
+
+The **Firmware** folder needs an admin user. **Upload release**: set `firmwareVersion`
+(SemVer, e.g. `1.0.1`), pick the binary for `file` in the Body tab, then Send; the new id is
+saved in `releaseId` for **Activate** / **Delete**. **Collar: check**, **Collar: latest
+version** (`GET /api/firmware/latest`, the active release without a version comparison) and
+**Collar: download** are what a collar calls. On a deployed Worker they need the collar's mTLS
+client certificate (Postman **Settings → Certificates**, CN = device_id); on localhost with
+`LIVE_VIEW_UNAUTHENTICATED=true` the `device_id` query parameter is enough. The device must
+have published over MQTT before (else `403 unknown_device`).

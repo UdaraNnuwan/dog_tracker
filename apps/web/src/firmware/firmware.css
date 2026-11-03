@@ -1,0 +1,82 @@
+/* Firmware tab (ADR 0012). */
+.firmware-view h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.firmware-upload h3 {
+  margin-bottom: 10px;
+}
+.firmware-upload .dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 140px;
+  margin-bottom: 12px;
+  padding: 16px;
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.firmware-upload .dropzone:hover,
+.firmware-upload .dropzone:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+.firmware-upload .dropzone.dragging {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+}
+.firmware-upload .dropzone.has-file {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ok) 60%, var(--line));
+}
+.firmware-upload .drop-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.firmware-upload .file-name {
+  font-weight: 600;
+  word-break: break-all;
+}
+.firmware-upload .dropzone button {
+  margin-top: 4px;
+  padding: 3px 10px;
+  font-size: 12.5px;
+}
+.firmware-upload .grow {
+  flex: 1 1 220px;
+  max-width: 560px;
+}
+.firmware-upload .grow input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.firmware-upload .error {
+  align-self: center;
+}
+.firmware-view td.actions {
+  text-align: right;
+}
+.firmware-view td.actions button {
+  padding: 3px 10px;
+  font-size: 12.5px;
+}
+.firmware-view tr.active-release {
+  background: color-mix(in srgb, var(--ok) 8%, transparent);
+}
+.firmware-view .collar-api pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: var(--code);
+  border-radius: 8px;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre;
+}

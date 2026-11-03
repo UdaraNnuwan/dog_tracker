@@ -16,3 +16,4 @@ Required for any architectural decision or deviation from the MQTT spec (see CLA
 | [0009](0009-dev-commands-before-auth.md) | Sending commands and settings from the dashboard before auth | Accepted |
 | [0010](0010-username-password-login.md) | Username + password login (Supabase Auth, seeded users) | Accepted |
 | [0011](0011-mqtt-spec-v3.md) | MQTT spec V3: topic layout, payloads, settings groups, deviations | Accepted |
+| [0012](0012-firmware-ota-over-https.md) | Firmware updates over HTTPS (collar pulls, mTLS) | Accepted |

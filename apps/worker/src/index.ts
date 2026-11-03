@@ -4,9 +4,13 @@ import {
   buildSettingsGet,
   buildSettingsSet,
   deviceTopic,
+  firmwareCheckQuery,
+  needsUpdate,
   isCommandName,
   isValidDeviceId,
   type CommandParams,
+  type FirmwareCheckResponse,
+  type FirmwareLatestResponse,
   type OutboundMessage,
   type ParseResult,
 } from "@udara/contracts";
@@ -20,6 +24,18 @@ import {
 } from "./auth/session.js";
 import { BRIDGE_ID } from "./bridge/MqttBridge.js";
 import type { Env } from "./env.js";
+import { clientCertOf, collarFromCert, type CollarAuth } from "./firmware/clientCert.js";
+import {
+  activateRelease,
+  activeRelease,
+  createRelease,
+  deleteRelease,
+  FirmwareNotSetUp,
+  listReleases,
+  parseUpload,
+  releaseByVersion,
+  signedFileUrl,
+} from "./firmware/releases.js";
 import { log } from "./log.js";
 import { listDevices, parseHistoryQuery, queryHistory } from "./storage/history.js";
 import { parseLogsQuery, queryLogs } from "./storage/logs.js";
@@ -33,7 +49,8 @@ function bridge(env: Env) {
 
 // Static assets (the SPA) are served by the platform; only /api/* reaches this app
 // (`assets.run_worker_first` in wrangler.jsonc).
-type AppEnv = { Bindings: Env; Variables: { user: SessionUser } };
+/** `deviceId`: the identified collar; unset on `/firmware/latest` in local dev without one. */
+type AppEnv = { Bindings: Env; Variables: { user: SessionUser; deviceId?: string } };
 export const app = new Hono<AppEnv>().basePath("/api");
 
 // Public on purpose: exposes coarse state only, no error text (could leak hostnames).
@@ -280,9 +297,211 @@ async function clearHistory(env: Env, deviceId?: string): Promise<number> {
   return data;
 }
 
+// ------------------------------------------------------------------ firmware (ADR 0012)
+
+/** Managing firmware releases is for admins only. */
+const adminOnly: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (c.get("user").role !== "admin") return c.json({ error: "forbidden" }, 403);
+  return next();
+};
+
+app.use("/firmware/releases", devOnly, adminOnly);
+app.use("/firmware/releases/*", devOnly, adminOnly);
+app.use("/firmware/active", devOnly, adminOnly);
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** All uploads, newest first. */
+app.get("/firmware/releases", async (c) => {
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  return c.json({ releases: await listReleases(db) });
+});
+
+/** Multipart upload: `version`, `file`, optional `notes`, `activate=true`. */
+app.post("/firmware/releases", async (c) => {
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const form = await c.req.formData().catch(() => null);
+  if (!form) return c.json({ error: "bad_request", message: "expected multipart form data" }, 400);
+  const upload = parseUpload(form);
+  if (typeof upload === "string") return c.json({ error: "bad_request", message: upload }, 400);
+  const user = c.get("user");
+  const release = await createRelease(db, upload, user.username);
+  if (!release) {
+    return c.json({ error: "conflict", message: `version ${upload.version} already exists` }, 409);
+  }
+  log("warn", "firmware uploaded", {
+    version: release.version,
+    size_bytes: release.size_bytes,
+    active: release.active,
+    user: user.username,
+  });
+  return c.json({ release }, 201);
+});
+
+app.delete("/firmware/releases/:id", async (c) => {
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const id = c.req.param("id");
+  if (!UUID_RE.test(id)) return c.json({ error: "bad_request" }, 400);
+  if (!(await deleteRelease(db, id))) return c.json({ error: "not_found" }, 404);
+  log("warn", "firmware deleted", { id, user: c.get("user").username });
+  return c.json({ deleted: true });
+});
+
+/** `PUT {id}` makes that release the one offered to collars; `{id: null}` offers none. */
+app.put("/firmware/active", async (c) => {
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const { id } = await jsonBody(c.req.raw);
+  if (id !== null && (typeof id !== "string" || !UUID_RE.test(id))) {
+    return c.json({ error: "bad_request", message: "id must be a release id or null" }, 400);
+  }
+  if (!(await activateRelease(db, id))) return c.json({ error: "not_found" }, 404);
+  log("warn", "firmware activated", { id, user: c.get("user").username });
+  return c.json({ active: id });
+});
+
+/**
+ * Collar endpoints: identity from the mTLS client certificate (CN = device_id). Local
+ * development without login trusts the `device_id` query parameter instead (ADR 0004).
+ * The device must be known (it has published over MQTT before), rule 4.
+ */
+const collarOnly: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const claimed = c.req.query("device_id");
+  const auth: CollarAuth = isLocalDev(c)
+    ? claimed && isValidDeviceId(claimed)
+      ? { ok: true, deviceId: claimed }
+      : { ok: false, reason: "client_certificate_no_device" }
+    : collarFromCert(clientCertOf(c.req.raw), claimed);
+  if (!auth.ok) {
+    log("warn", "firmware request refused", {
+      reason: auth.reason,
+      ...(claimed ? { device_id: claimed.slice(0, 64) } : {}),
+    });
+    return c.json({ error: auth.reason }, 401);
+  }
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const { data, error } = await db
+    .from("devices")
+    .select("id")
+    .eq("id", auth.deviceId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return c.json({ error: "unknown_device" }, 403);
+  c.set("deviceId", auth.deviceId);
+  return next();
+};
+
+app.use("/firmware/check", collarOnly);
+/**
+ * `device_id` is optional for the latest version and the download: deployed, the certificate
+ * identifies the collar anyway; local development then skips identification.
+ */
+const collarOptional: MiddlewareHandler<AppEnv> = (c, next) =>
+  isLocalDev(c) && !c.req.query("device_id") ? next() : collarOnly(c, next);
+
+app.use("/firmware/latest", collarOptional);
+app.use("/firmware/download/*", collarOptional);
+
+/** Where a collar downloads `version`: same host, so the same client certificate applies. */
+const downloadUrl = (reqUrl: string, version: string, deviceId?: string) => {
+  const url = new URL(`/api/firmware/download/${encodeURIComponent(version)}`, reqUrl);
+  if (deviceId) url.searchParams.set("device_id", deviceId);
+  return url.toString();
+};
+
+const deviceField = (deviceId?: string) => (deviceId ? { device_id: deviceId } : {});
+
+/** `GET /api/firmware/check?device_id=…&version=1.0.0` → `FirmwareCheckResponse`. */
+app.get("/firmware/check", async (c) => {
+  const deviceId = c.get("deviceId");
+  const q = firmwareCheckQuery.safeParse({ device_id: deviceId, version: c.req.query("version") });
+  if (!q.success) {
+    return c.json({ error: "bad_request", message: "version must be SemVer, e.g. 1.0.0" }, 400);
+  }
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const active = await activeRelease(db);
+  const update = needsUpdate(q.data.version, active?.version ?? null);
+  log("info", "firmware check", {
+    device_id: q.data.device_id,
+    version: q.data.version,
+    offered: update ? active?.version : null,
+  });
+  if (!active || !update) return c.json({ update: false, version: active?.version ?? null });
+  return c.json({
+    update: true,
+    version: active.version,
+    size_bytes: active.size_bytes,
+    sha256: active.sha256,
+    download_url: downloadUrl(c.req.url, active.version, q.data.device_id),
+  } satisfies FirmwareCheckResponse);
+});
+
+/** `GET /api/firmware/latest[?device_id=…]` → `FirmwareLatestResponse` (the active release). */
+app.get("/firmware/latest", async (c) => {
+  const deviceId = c.get("deviceId");
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const active = await activeRelease(db);
+  log("info", "firmware latest", { ...deviceField(deviceId), offered: active?.version ?? null });
+  if (!active) return c.json({ version: null } satisfies FirmwareLatestResponse);
+  return c.json({
+    version: active.version,
+    size_bytes: active.size_bytes,
+    sha256: active.sha256,
+    uploaded_at: active.uploaded_at,
+    download_url: downloadUrl(c.req.url, active.version, deviceId),
+  } satisfies FirmwareLatestResponse);
+});
+
+/** Streams the file of any stored release; passes `Range` through for resumable downloads. */
+app.get("/firmware/download/:version", async (c) => {
+  const db = serviceClient(c.env);
+  if (!db) return c.json(storageMissing, 503);
+  const release = await releaseByVersion(db, c.req.param("version"));
+  if (!release) return c.json({ error: "not_found" }, 404);
+  const range = c.req.header("Range");
+  const upstream = await fetch(await signedFileUrl(db, release), {
+    headers: range ? { Range: range } : {},
+  });
+  if (!upstream.ok || !upstream.body) {
+    log("error", "firmware download failed", {
+      ...deviceField(c.get("deviceId")),
+      version: release.version,
+      status: upstream.status,
+    });
+    return c.json({ error: "download_failed" }, 502);
+  }
+  log("info", "firmware download", {
+    ...deviceField(c.get("deviceId")),
+    version: release.version,
+    ...(range ? { range } : {}),
+  });
+  const headers = new Headers({
+    "Content-Type": "application/octet-stream",
+    "Content-Disposition": `attachment; filename="${release.file_name}"`,
+    "X-Firmware-Version": release.version,
+    "X-Firmware-SHA256": release.sha256,
+    "Cache-Control": "no-store",
+  });
+  for (const h of ["Content-Length", "Content-Range", "Accept-Ranges"]) {
+    const v = upstream.headers.get(h);
+    if (v) headers.set(h, v);
+  }
+  return new Response(upstream.body, { status: upstream.status, headers });
+});
+
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 
 app.onError((err, c) => {
+  if (err instanceof FirmwareNotSetUp) {
+    log("error", err.message, { path: c.req.path });
+    return c.json({ error: "firmware_not_set_up", message: err.message }, 503);
+  }
   log("error", "unhandled api error", { path: c.req.path, error: String(err) });
   return c.json({ error: "internal_error" }, 500);
 });

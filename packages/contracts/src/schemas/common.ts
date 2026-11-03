@@ -21,6 +21,12 @@ export const positiveInt = z.number().int().positive();
 export const percentage = z.number().int().min(0).max(100);
 export const vector3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
 
+/** Firmware versions are SemVer: `1.0.0`, `1.1.0-sim` (ADR 0011). */
+export const semver = z
+  .string()
+  .max(64)
+  .regex(/^\d+\.\d+\.\d+([-+][0-9A-Za-z.+-]+)?$/, "expected SemVer");
+
 /** Correlates a command with its response. The backend generates a UUID (rule 3). */
 export const requestId = z.string().min(1).max(64);
 

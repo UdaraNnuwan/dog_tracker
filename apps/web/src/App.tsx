@@ -10,13 +10,16 @@ import "./logs/logs.css";
 import "./topics/topics.css";
 import "./device/device.css";
 import "./auth/auth.css";
+import "./firmware/firmware.css";
 
 const TABS = [
-  { id: "live", label: "Live" },
-  { id: "device", label: "Device" },
-  { id: "history", label: "History" },
-  { id: "logs", label: "Logs" },
-  { id: "topics", label: "Topics" },
+  { id: "live", label: "Live", adminOnly: false },
+  { id: "device", label: "Device", adminOnly: false },
+  { id: "history", label: "History", adminOnly: false },
+  { id: "logs", label: "Logs", adminOnly: false },
+  { id: "topics", label: "Topics", adminOnly: false },
+  // The firmware API is admin-only (ADR 0012).
+  { id: "firmware", label: "Firmware", adminOnly: true },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -27,12 +30,15 @@ const DeviceView = lazy(() =>
 const TopicsView = lazy(() =>
   import("./topics/TopicsView.js").then((m) => ({ default: m.TopicsView })),
 );
+const FirmwareView = lazy(() =>
+  import("./firmware/FirmwareView.js").then((m) => ({ default: m.FirmwareView })),
+);
 
 const fromHash = (): Tab => TABS.find((t) => `#${t.id}` === location.hash)?.id ?? "live";
 
 // Until the real dashboard (phase 7): live view (ADR 0004), per-device data and controls
 // (ADR 0009), stored history (ADR 0006), saved processing logs and the topic catalogue
-// (ADR 0008).
+// (ADR 0008), and firmware releases for admins (ADR 0012).
 export function App() {
   const [tab, setTab] = useState<Tab>(fromHash);
   // Links such as `#device` switch tabs too.
@@ -51,7 +57,7 @@ export function App() {
         {(me, signOut) => (
           <>
             <nav className="tabs main">
-              {TABS.map((t) => (
+              {TABS.filter((t) => !t.adminOnly || me.user.role === "admin").map((t) => (
                 <button
                   key={t.id}
                   type="button"
@@ -77,6 +83,11 @@ export function App() {
             {(tab === "device" || tab === "topics") && (
               <Suspense fallback={<p className="muted notice">Loading…</p>}>
                 {tab === "device" ? <DeviceView /> : <TopicsView />}
+              </Suspense>
+            )}
+            {tab === "firmware" && me.user.role === "admin" && (
+              <Suspense fallback={<p className="muted notice">Loading…</p>}>
+                <FirmwareView />
               </Suspense>
             )}
           </>

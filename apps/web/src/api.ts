@@ -188,5 +188,44 @@ export const startDemo = (opts: { devices?: number; seconds?: number } = {}) =>
 
 export const stopDemo = () => request<DemoStatus>("/api/demo", { method: "DELETE" });
 
+// ------------------------------------------------------------------ firmware (ADR 0012)
+
+export type FirmwareRelease = Tables<"firmware_releases">;
+
+export const fetchFirmware = async () =>
+  (await request<{ releases: FirmwareRelease[] }>("/api/firmware/releases")).releases;
+
+/** Multipart upload; `activate` offers it to collars right away. */
+export async function uploadFirmware(input: {
+  version: string;
+  file: File;
+  notes: string;
+  activate: boolean;
+}): Promise<FirmwareRelease> {
+  const form = new FormData();
+  form.set("version", input.version);
+  form.set("file", input.file);
+  form.set("notes", input.notes);
+  form.set("activate", String(input.activate));
+  const res = await request<{ release: FirmwareRelease }>("/api/firmware/releases", {
+    method: "POST",
+    body: form,
+  });
+  return res.release;
+}
+
+/** Offers this release to collars, or none with null. */
+export const setActiveFirmware = (id: string | null) =>
+  request<{ active: string | null }>("/api/firmware/active", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+
+export const deleteFirmware = (id: string) =>
+  request<{ deleted: boolean }>(`/api/firmware/releases/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+
 /** Postgres timestamptz → epoch seconds (rule 5: convert at the UI edge only). */
 export const toEpoch = (iso: string) => Date.parse(iso) / 1000;

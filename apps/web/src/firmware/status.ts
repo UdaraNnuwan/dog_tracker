@@ -1,0 +1,29 @@
+import { needsUpdate } from "@udara/contracts";
+
+/** `1536` → `1.5 KiB`. */
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KiB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MiB`;
+}
+
+/** `collar-v1.2.0.bin` → `1.2.0`, `fw_1.3.0-rc.1.bin` → `1.3.0-rc.1`; null when none. */
+export function versionFromFileName(name: string): string | null {
+  const base = name.replace(/\.(bin|hex|img|ota|zip)$/i, "");
+  return /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)/.exec(base)?.[1] ?? null;
+}
+
+export type CollarFirmwareState = "current" | "update" | "unknown" | "none";
+
+/**
+ * What a collar will do on its next check: `update` when its reported version differs from
+ * the active release (ADR 0012), `unknown` before it has reported one, `none` with no release.
+ */
+export function collarFirmwareState(
+  reported: string | null,
+  active: string | null,
+): CollarFirmwareState {
+  if (active === null) return "none";
+  if (!reported) return "unknown";
+  return needsUpdate(reported, active) ? "update" : "current";
+}

@@ -200,6 +200,45 @@ export type Database = {
           },
         ];
       };
+      firmware_releases: {
+        Row: {
+          active: boolean;
+          file_name: string;
+          id: string;
+          notes: string | null;
+          sha256: string;
+          size_bytes: number;
+          storage_path: string;
+          uploaded_at: string;
+          uploaded_by: string;
+          version: string;
+        };
+        Insert: {
+          active?: boolean;
+          file_name: string;
+          id?: string;
+          notes?: string | null;
+          sha256: string;
+          size_bytes: number;
+          storage_path: string;
+          uploaded_at?: string;
+          uploaded_by: string;
+          version: string;
+        };
+        Update: {
+          active?: boolean;
+          file_name?: string;
+          id?: string;
+          notes?: string | null;
+          sha256?: string;
+          size_bytes?: number;
+          storage_path?: string;
+          uploaded_at?: string;
+          uploaded_by?: string;
+          version?: string;
+        };
+        Relationships: [];
+      };
       gps_points: {
         Row: {
           device_id: string;
@@ -332,6 +371,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      activate_firmware: { Args: { p_id?: string }; Returns: undefined };
       clear_history: { Args: { p_device_id?: string }; Returns: number };
       ingest_batch: {
         Args: { p_messages: Json; p_rejected?: Json };

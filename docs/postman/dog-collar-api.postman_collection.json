@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Smart Dog Collar API (dev)",
-    "description": "Worker API for local development (`pnpm dev`, http://localhost:8787). Device commands go through the bridge, which validates them and publishes to `pettracker/{id}/device/\u2026` with a backend-generated request_id / setting_id (spec V3 \u00a74, \u00a76, ADR 0009, ADR 0011). Everything except /api/health needs LIVE_VIEW_UNAUTHENTICATED=true in apps/worker/.dev.vars and a localhost URL.\n\nTo publish raw MQTT messages (as a collar), see docs/postman/README.md.",
+    "name": "Smart Dog Collar API",
+    "description": "Worker API. Set `baseUrl` to `http://localhost:8787` (`pnpm dev`) or the deployed Worker URL.\n\nSign in first with **Auth → Login**: it stores the access token in `accessToken`, which every request sends as `Authorization: Bearer …` (collection auth). On localhost with LIVE_VIEW_UNAUTHENTICATED=true no login is needed (ADR 0004, ADR 0010).\n\nDevice commands go through the bridge, which validates them and publishes to `pettracker/{id}/device/…` with a backend-generated request_id / setting_id (spec V3 §4, §6, ADR 0009, ADR 0011). Firmware: see the Firmware folder (ADR 0012).\n\nTo publish raw MQTT messages (as a collar), see docs/postman/README.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -12,9 +12,159 @@
     {
       "key": "deviceId",
       "value": "dog001"
+    },
+    {
+      "key": "username",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "firmwareVersion",
+      "value": "1.0.1"
+    },
+    {
+      "key": "releaseId",
+      "value": ""
     }
   ],
   "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const s = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', s.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', s.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Username + password (ADR 0010). Saves accessToken and refreshToken.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const s = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', s.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', s.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "New access token when the old one expired (401 auth_required).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "The signed-in user and role."
+          }
+        }
+      ]
+    },
     {
       "name": "Status",
       "item": [
@@ -75,7 +225,7 @@
       ]
     },
     {
-      "name": "Commands (spec V3 \u00a74)",
+      "name": "Commands (spec V3 §4)",
       "item": [
         {
           "name": "Config",
@@ -290,7 +440,7 @@
       ]
     },
     {
-      "name": "Settings (spec V3 \u00a76)",
+      "name": "Settings (spec V3 §6)",
       "item": [
         {
           "name": "Set gps_settings",
@@ -543,6 +693,268 @@
           }
         }
       ]
+    },
+    {
+      "name": "Firmware (ADR 0012)",
+      "description": "Admin: upload, list, activate and delete releases (role admin). Collar: check and download, identified by its mTLS client certificate (CN = device_id). Without a client certificate the collar requests only work on localhost with LIVE_VIEW_UNAUTHENTICATED=true, where `device_id` is taken from the query. The device must be known (it has published over MQTT before).",
+      "item": [
+        {
+          "name": "List releases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/firmware/releases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "firmware",
+                "releases"
+              ]
+            },
+            "description": "All uploads, newest first."
+          }
+        },
+        {
+          "name": "Upload release",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('releaseId', pm.response.json().release.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/firmware/releases",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "firmware",
+                "releases"
+              ]
+            },
+            "description": "Multipart form. `version` SemVer (e.g. 1.0.1), `file` the firmware binary (max 32 MB), optional `notes`, `activate=true` to offer it to collars right away. Pick the file in the Body tab. 409 if the version already exists. Saves the new id in `releaseId`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "version",
+                  "value": "{{firmwareVersion}}",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "notes",
+                  "value": "Uploaded from Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "activate",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Activate release",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/firmware/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "firmware",
+                "active"
+              ]
+            },
+            "description": "Makes this release the one offered to collars. `{\"id\": null}` offers none.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{releaseId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Deactivate all",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/firmware/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "firmware",
+                "active"
+              ]
+            },
+            "description": "No release is offered to collars.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete release",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/firmware/releases/{{releaseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "firmware",
+                "releases",
+                "{{releaseId}}"
+              ]
+            },
+            "description": "Removes the row and the file from the `firmware` bucket."
+          }
+        },
+        {
+          "name": "Collar: check for update",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/firmware/check?device_id={{deviceId}}&version=1.0.0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "firmware",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "device_id",
+                  "value": "{{deviceId}}"
+                },
+                {
+                  "key": "version",
+                  "value": "1.0.0",
+                  "description": "The collar's current firmware version"
+                }
+              ]
+            },
+            "description": "`{update: false, version}` or `{update: true, version, size_bytes, sha256, download_url}`."
+          }
+        },
+        {
+          "name": "Collar: latest version",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/firmware/latest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "firmware",
+                "latest"
+              ]
+            },
+            "description": "The release offered to collars (the active one): `{version, size_bytes, sha256, uploaded_at, download_url}`, or `{version: null}` when none is active. No device_id needed: deployed, the client certificate identifies the collar; on localhost no identification is needed."
+          }
+        },
+        {
+          "name": "Collar: download",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/firmware/download/{{firmwareVersion}}?device_id={{deviceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "firmware",
+                "download",
+                "{{firmwareVersion}}"
+              ],
+              "query": [
+                {
+                  "key": "device_id",
+                  "value": "{{deviceId}}"
+                }
+              ]
+            },
+            "description": "Streams the file (Send and Download). Supports `Range` for resuming. Headers X-Firmware-Version and X-Firmware-SHA256."
+          }
+        }
+      ]
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  }
 }

@@ -49,7 +49,10 @@ wins; record any deliberate deviation in `docs/adr/` (V3 reading and deviations:
   settings/{set|get}/{group}. Groups: network_settings, gps_settings, profile_settings,
   power_settings, sensor_settings, device_settings.
 - Topics marked TBD in the spec (pilot phase) are implemented and flagged as TBD.
-  OTA (`command/firmware_update`) is a spec proposal: do NOT implement.
+  OTA is done over HTTPS, not MQTT (ADR 0012): admins upload releases in the Firmware tab (Supabase
+  Storage bucket `firmware`, one active release); collars call `GET /api/firmware/check` with their
+  version and download from `/api/firmware/download/{version}`, authenticated by mTLS client
+  certificate (CN = device_id). `command/firmware_update` over MQTT is still NOT implemented.
 
 ## Non-negotiable rules
 1. **No broker credentials, tokens or secrets in the frontend bundle or in git.** Secrets via

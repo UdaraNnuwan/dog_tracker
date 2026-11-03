@@ -5,7 +5,8 @@ import { settingsEnvelope } from "./inbound.js";
 
 /**
  * Payloads the backend publishes under `pettracker/{device_id}/device/…` (spec V3 §4, §6).
- * OTA (`command/firmware_update`) is a proposal and deliberately absent.
+ * `command/firmware_update` is a proposal and deliberately absent: OTA is an HTTPS pull
+ * (`firmware.ts`, ADR 0012).
  */
 
 /** Marked TBD in spec V3: the config keys aren't defined yet. */

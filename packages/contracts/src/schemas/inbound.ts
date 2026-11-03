@@ -10,6 +10,7 @@ import {
   positiveInt,
   requestId,
   responseEnvelope,
+  semver,
   vector3,
 } from "./common.js";
 
@@ -60,9 +61,6 @@ export const bmeTelemetry = z.object({
 });
 
 // ---------------------------------------------------------------- status (§2)
-
-/** SemVer core, optionally with pre-release/build suffix (`1.0.0`, `1.1.0-sim`). */
-const semver = z.string().regex(/^\d+\.\d+\.\d+([-+][0-9A-Za-z.+-]+)?$/, "expected SemVer");
 
 export const systemStatus = z.object({
   ...envelope,
