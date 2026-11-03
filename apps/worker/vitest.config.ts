@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [
     cloudflareTest({
-      wrangler: { configPath: "./wrangler.jsonc" },
+      wrangler: { configPath: "../../wrangler.jsonc" },
       // Tests must never reach a real broker: no HIVEMQ_* bindings => bridge stays "unconfigured".
       // The live view starts closed; tests opt in explicitly.
       miniflare: {

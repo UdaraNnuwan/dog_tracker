@@ -1,13 +1,15 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
+  // At the repo root so Cloudflare Workers Builds can run `npx wrangler deploy` from the root;
+  // wrangler finds it from apps/worker too. Paths are relative to this file.
+  "$schema": "apps/worker/node_modules/wrangler/config-schema.json",
   "name": "dogtracker",
-  "main": "src/index.ts",
+  "main": "apps/worker/src/index.ts",
   // Must not be newer than the workerd bundled with @cloudflare/vitest-pool-workers.
   "compatibility_date": "2026-08-15",
   "observability": { "enabled": true },
 
   "assets": {
-    "directory": "../web/dist",
+    "directory": "apps/web/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"],
