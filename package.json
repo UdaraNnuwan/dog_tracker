@@ -13,6 +13,7 @@
     "seed:users": "pnpm --filter @udara/worker seed:users",
     "deploy:secrets": "pnpm --filter @udara/worker deploy:secrets",
     "build": "pnpm -r build",
+    "deploy": "pnpm --filter @udara/worker run deploy",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
